@@ -1,7 +1,7 @@
-# Satisfactory-AB_FluidExtras
-The development source for the Satisfactory mod AB_FluidExtras
+# Satisfactory-AB_XMASBooster
+The development source for the Satisfactory mod AB_XMASBooster
 
-See the [mod page](https://ficsit.app/mod/xmYZyoM1y5nTw) for details
+See the [mod page](https://ficsit.app/mod/AB_XMASBooster) for details
 
 # Setup
 If you want to play the mod, install it via SMM.
@@ -21,7 +21,6 @@ I use the following software:
 
 * GIT-LFS
 * Blender
-  * Y.A.V.N.E.
 * Affinity Designer
 * Substance Painter
 
