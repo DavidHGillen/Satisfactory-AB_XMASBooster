@@ -1,0 +1,28 @@
+{
+	"FileVersion": 3,
+	"Version": 0,
+	"VersionName": "0.0.1",
+	"SemVersion": "0.0.1",
+	"FriendlyName": "Beaver's Ficsmas Booster",
+	"Description": "Angry Beaver thinks you need more Ficsmas Spirit, so here it is!",
+	"Category": "Modding",
+	"CreatedBy": "AngryBeaver#9028",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules" : [
+	],
+	"Plugins": [
+		{
+			"Name": "SML",
+			"SemVersion": "^3.3.0",
+			"bIsOptional": false,
+			"Enabled": true
+		}
+	]
+}
