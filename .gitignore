@@ -1,11 +1,14 @@
 _promo/*.afdesign
+*.autosave*
 *.png
 !_promo/*.png
 *.tga
 *.blend[0-9]*
 *.painter_lock
 *_autosave_[0-9].spp
-*/.autosave/*
+**/.autosave/*
+*.assbin
+*.sbsar
 *.fbx
 _*Ref.*
 desktop.ini
