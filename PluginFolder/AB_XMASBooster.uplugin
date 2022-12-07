@@ -16,6 +16,11 @@
 	"IsExperimentalVersion": false,
 	"Installed": false,
 	"Modules" : [
+		{
+			"Name" : "AB_XMASBooster",
+			"Type" : "Runtime",
+			"LoadingPhase" : "Default"
+		}
 	],
 	"Plugins": [
 		{
