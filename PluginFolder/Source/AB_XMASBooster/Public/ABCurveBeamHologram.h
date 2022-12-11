@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 
 #include "FGBeamHologram.h"
+#include "Components/SplineMeshComponent.h"
 
 #include "ABCurveBeamHologram.generated.h"
 
@@ -24,20 +25,18 @@ public:
 	// Begin AFGHologram interface
 	//virtual bool IsValidHitResult(const FHitResult& hitResult) const override;
 	//virtual bool TrySnapToActor(const FHitResult& hitResult) override;
-	//virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
-	virtual bool DoMultiStepPlacement(bool isInputFromARelease) override;
-	//virtual int32 GetRotationStep() const override;
 	virtual void GetSupportedBuildModes_Implementation(TArray< TSubclassOf<UFGHologramBuildModeDescriptor> >& out_buildmodes) const override;
+	virtual void OnBuildModeChanged() override;
+
+	virtual bool DoMultiStepPlacement(bool isInputFromARelease) override;
+	virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
+
+	virtual void PreConfigureActor(AFGBuildable* inBuildable) override;
 	virtual void ConfigureActor(AFGBuildable* inBuildable) const override;
-	//virtual int32 GetBaseCostMultiplier() const override;
-	//virtual bool CanBeZooped() const override;
-	//virtual bool CanIntersectWithDesigner(AFGBuildableBlueprintDesigner* designer) override;
-	// End AFGHologram interface
-
-	//virtual void OnPendingConstructionHologramCreated_Implementation(AFGHologram* fromHologram) override;
-
 
 protected:
+	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName) override;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
 		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeCurved;
 
@@ -45,6 +44,9 @@ protected:
 		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeCompoundCurve;
 
 	// Custom:
-	bool bTangentInSet = false;
-	bool bTangentOutSet = false;
+	bool isBeamStarted = false;
+	bool isBeamComplete = false;
+	bool isAnyCurvedBeamMode = false;
+
+	USplineMeshComponent* splineRef = NULL;
 };
