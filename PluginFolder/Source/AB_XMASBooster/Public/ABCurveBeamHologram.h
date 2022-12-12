@@ -32,10 +32,9 @@ public:
 	virtual bool DoMultiStepPlacement(bool isInputFromARelease) override;
 	virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
 
+protected:
 	virtual void PreConfigureActor(AFGBuildable* inBuildable) override;
 	virtual void ConfigureActor(AFGBuildable* inBuildable) const override;
-
-protected:
 	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName) override;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
@@ -53,7 +52,8 @@ protected:
 	FVector startTangent;
 	FVector endTangent;
 
-	IABICurveBeamHologram* splineRef = NULL;
+	IABICurveBeamHologram* splineRefInt = NULL;
+	USplineMeshComponent* splineRefComp = NULL;
 
 	void UpdateAndReconstructSpline();
 };

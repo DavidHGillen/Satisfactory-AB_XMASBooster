@@ -27,8 +27,6 @@ void AABCurveBeamHologram::OnBuildModeChanged()
 
 	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
 
-	UpdateAndReconstructSpline();
-
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Change: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
 }
 
@@ -113,11 +111,14 @@ void AABCurveBeamHologram::PreConfigureActor(AFGBuildable* inBuildable)
 
 	IABICurveBeamHologram* splineRefTest = Cast<IABICurveBeamHologram>(inBuildable);
 	if (splineRefTest != NULL) {
-		splineRef = splineRefTest;
+		splineRefInt = splineRefTest;
 	}
 
 	Super::PreConfigureActor(inBuildable);
 
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] PreConfig: %s"), (splineRefTest == NULL) ? TEXT("NO API") : TEXT("YES API"));
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] PreConfig: %s"), (splineRefTest == NULL) ? TEXT("NO API") : TEXT("YES API"));
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] PreConfig: %s"), (splineRefTest == NULL) ? TEXT("NO API") : TEXT("YES API"));
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] PreConfig: %s"), (splineRefTest == NULL) ? TEXT("NO API") : TEXT("YES API"));
 }
 
@@ -133,14 +134,11 @@ USceneComponent* AABCurveBeamHologram::SetupComponent(USceneComponent* attachPar
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Setup: %s %s"), isAnyCurvedBeamMode?TEXT("CRV"):TEXT("STR"), *(componentName.ToString()));
 
 	// Lets just keep track of our spline if we need it
-	/*USplineMeshComponent* splineRefTest = Cast<USplineMeshComponent>(componentTemplate);
+	USplineMeshComponent* splineRefTest = Cast<USplineMeshComponent>(componentTemplate);
 	if (splineRefTest != NULL) {
-		splineRef = splineRefTest;
-		//FVector defaultSplineLoc = FVector(0.0f, 0.0f, 400.0f);
-		//splineRef->SetStartTangent(defaultSplineLoc, false);
-		//splineRef->SetEndTangent(defaultSplineLoc, false);
-		//splineRef->SetEndPosition(defaultSplineLoc, true);
-	}*/
+		splineRefComp = splineRefTest;
+		UpdateAndReconstructSpline();
+	}
 
 	return Super::SetupComponent(attachParent, componentTemplate, componentName);
 }
@@ -149,15 +147,21 @@ USceneComponent* AABCurveBeamHologram::SetupComponent(USceneComponent* attachPar
 //////////////////////////////////////////////////////
 void AABCurveBeamHologram::UpdateAndReconstructSpline()
 {
-	if (splineRef == NULL) { return; }
+	//*
+	if (splineRefInt != NULL) {
+		UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE Interface: "));
 
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE: "));
-
-	if (isAnyCurvedBeamMode) {
-		splineRef->UpdateSplineData(false, FVector::ZeroVector, FVector::ZeroVector, FVector::ZeroVector);
-	} else {
-		splineRef->UpdateSplineData(true, startTangent, endPos, endTangent);
+		splineRefInt->UpdateSplineData(true, startTangent, endPos, endTangent);
 	}
 
 	RerunConstructionScripts();
+	//*/
+	if (splineRefComp != NULL) {
+		UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE Component: "));
+
+		splineRefComp->SetStartTangent(startTangent, false);
+		splineRefComp->SetEndTangent(endTangent, false);
+		splineRefComp->SetEndPosition(endPos, true);
+	}
+	//*/
 }
