@@ -7,6 +7,7 @@
 
 #include "FGBeamHologram.h"
 #include "Components/SplineMeshComponent.h"
+#include "ABICurveBeamHologram.h"
 
 #include "ABCurveBeamHologram.generated.h"
 
@@ -48,5 +49,11 @@ protected:
 	bool isBeamComplete = false;
 	bool isAnyCurvedBeamMode = false;
 
-	USplineMeshComponent* splineRef = NULL;
+	FVector endPos;
+	FVector startTangent;
+	FVector endTangent;
+
+	IABICurveBeamHologram* splineRef = NULL;
+
+	void UpdateAndReconstructSpline();
 };

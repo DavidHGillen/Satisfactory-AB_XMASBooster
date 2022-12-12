@@ -5,6 +5,10 @@
 // Ctor
 //////////////////////////////////////////////////////
 AABCurveBeamHologram::AABCurveBeamHologram() {
+	FVector defaultSplineLoc = FVector(0.0f, 0.0f, 400.0f);
+	startTangent = defaultSplineLoc;
+	endPos = defaultSplineLoc;
+	endTangent = defaultSplineLoc;
 }
 
 // AFGHologram interface
@@ -22,6 +26,8 @@ void AABCurveBeamHologram::OnBuildModeChanged()
 	Super::OnBuildModeChanged();
 
 	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
+
+	UpdateAndReconstructSpline();
 
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Change: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
 }
@@ -67,7 +73,7 @@ void AABCurveBeamHologram::SetHologramLocationAndRotation(const FHitResult& hitR
 			// convert to the space of the hit object, snap in it, then convert back to world, then world to our space
 			localSnappedHitLocation = ActorToWorld().InverseTransformPosition(
 				hitToWorld.TransformPosition(
-					hitToWorld.InverseTransformPosition(hitResult.ImpactPoint).GridSnap(50.0f)
+					hitToWorld.InverseTransformPosition(hitResult.ImpactPoint).GridSnap(mGridSnapSize)
 				)
 			);
 		}
@@ -79,9 +85,12 @@ void AABCurveBeamHologram::SetHologramLocationAndRotation(const FHitResult& hitR
 
 		if (isBeamStarted && isAnyCurvedBeamMode) {
 			// length = in tangent = out tanget >>>> evenly distributed straight spline
-			splineRef->SetEndPosition(localSnappedHitLocation, true);
-			splineRef->SetEndTangent(localSnappedHitLocation, false);
-			splineRef->SetStartTangent(localSnappedHitLocation, false);
+			if (!localSnappedHitLocation.Equals(endPos)) {
+				endPos = localSnappedHitLocation;
+				startTangent = localSnappedHitLocation;
+				endTangent = localSnappedHitLocation;
+				UpdateAndReconstructSpline();
+			}
 		}
 		return;
 	}
@@ -90,9 +99,10 @@ void AABCurveBeamHologram::SetHologramLocationAndRotation(const FHitResult& hitR
 		localSnappedHitLocation.X, localSnappedHitLocation.Y, localSnappedHitLocation.Z);
 
 	// set our tangents correctly for where we're looking and our build mode
-	if (splineRef != NULL) {
-		splineRef->SetStartTangent(localSnappedHitLocation, false);
-		splineRef->SetEndTangent(splineRef->GetEndPosition() - localSnappedHitLocation, true);
+	if (!localSnappedHitLocation.Equals(startTangent)) {
+		startTangent = localSnappedHitLocation;
+		endTangent = endPos - localSnappedHitLocation;
+		UpdateAndReconstructSpline();
 	}
 }
 
@@ -100,11 +110,21 @@ void AABCurveBeamHologram::PreConfigureActor(AFGBuildable* inBuildable)
 {
 	isBeamStarted = false;
 	isBeamComplete = false;
+
+	IABICurveBeamHologram* splineRefTest = Cast<IABICurveBeamHologram>(inBuildable);
+	if (splineRefTest != NULL) {
+		splineRef = splineRefTest;
+	}
+
+	Super::PreConfigureActor(inBuildable);
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] PreConfig: %s"), (splineRefTest == NULL) ? TEXT("NO API") : TEXT("YES API"));
 }
 
 void AABCurveBeamHologram::ConfigureActor(AFGBuildable* inBuildable) const
 {
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Config: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
+
 	Super::ConfigureActor(inBuildable);
 }
 
@@ -113,14 +133,31 @@ USceneComponent* AABCurveBeamHologram::SetupComponent(USceneComponent* attachPar
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Setup: %s %s"), isAnyCurvedBeamMode?TEXT("CRV"):TEXT("STR"), *(componentName.ToString()));
 
 	// Lets just keep track of our spline if we need it
-	USplineMeshComponent* splineRefTest = Cast<USplineMeshComponent>(componentTemplate);
+	/*USplineMeshComponent* splineRefTest = Cast<USplineMeshComponent>(componentTemplate);
 	if (splineRefTest != NULL) {
 		splineRef = splineRefTest;
 		//FVector defaultSplineLoc = FVector(0.0f, 0.0f, 400.0f);
 		//splineRef->SetStartTangent(defaultSplineLoc, false);
 		//splineRef->SetEndTangent(defaultSplineLoc, false);
 		//splineRef->SetEndPosition(defaultSplineLoc, true);
-	}
+	}*/
 
 	return Super::SetupComponent(attachParent, componentTemplate, componentName);
+}
+
+// Custom:
+//////////////////////////////////////////////////////
+void AABCurveBeamHologram::UpdateAndReconstructSpline()
+{
+	if (splineRef == NULL) { return; }
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE: "));
+
+	if (isAnyCurvedBeamMode) {
+		splineRef->UpdateSplineData(false, FVector::ZeroVector, FVector::ZeroVector, FVector::ZeroVector);
+	} else {
+		splineRef->UpdateSplineData(true, startTangent, endPos, endTangent);
+	}
+
+	RerunConstructionScripts();
 }
