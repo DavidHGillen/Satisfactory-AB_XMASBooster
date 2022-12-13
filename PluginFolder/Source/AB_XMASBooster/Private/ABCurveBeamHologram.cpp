@@ -25,6 +25,9 @@ void AABCurveBeamHologram::OnBuildModeChanged()
 {
 	Super::OnBuildModeChanged();
 
+	isBeamStarted = false;
+	isBeamComplete = false;
+
 	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
 
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Change: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
@@ -77,6 +80,9 @@ void AABCurveBeamHologram::SetHologramLocationAndRotation(const FHitResult& hitR
 		}
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Set loc-rot: %s @%d,%d,%d "), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"),
+		localSnappedHitLocation.X / 100, localSnappedHitLocation.Y / 100, localSnappedHitLocation.Z / 100);
+
 	// behave like normal till we enter curving steps
 	if (!isBeamComplete) {
 		Super::SetHologramLocationAndRotation(hitResult);
@@ -93,9 +99,6 @@ void AABCurveBeamHologram::SetHologramLocationAndRotation(const FHitResult& hitR
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Set loc-rot: %s @%d,%d,%d "), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"),
-		localSnappedHitLocation.X, localSnappedHitLocation.Y, localSnappedHitLocation.Z);
-
 	// set our tangents correctly for where we're looking and our build mode
 	if (!localSnappedHitLocation.Equals(startTangent)) {
 		startTangent = localSnappedHitLocation;
@@ -103,15 +106,15 @@ void AABCurveBeamHologram::SetHologramLocationAndRotation(const FHitResult& hitR
 		UpdateAndReconstructSpline();
 	}
 }
-
+/*
 void AABCurveBeamHologram::PreConfigureActor(AFGBuildable* inBuildable)
 {
 	isBeamStarted = false;
 	isBeamComplete = false;
 
-	IABICurveBeamHologram* splineRefTest = Cast<IABICurveBeamHologram>(inBuildable);
-	if (splineRefTest != NULL) {
-		splineRefInt = splineRefTest;
+	IABICurveBeamHologram* splineRefTemp = Cast<IABICurveBeamHologram>(inBuildable);
+	if (splineRefTemp != NULL) {
+		splineRefInt = splineRefTemp;
 	}
 
 	Super::PreConfigureActor(inBuildable);
@@ -127,17 +130,16 @@ void AABCurveBeamHologram::ConfigureActor(AFGBuildable* inBuildable) const
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Config: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
 
 	Super::ConfigureActor(inBuildable);
-}
+}*/
 
 USceneComponent* AABCurveBeamHologram::SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName)
 {
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Setup: %s %s"), isAnyCurvedBeamMode?TEXT("CRV"):TEXT("STR"), *(componentName.ToString()));
 
 	// Lets just keep track of our spline if we need it
-	USplineMeshComponent* splineRefTest = Cast<USplineMeshComponent>(componentTemplate);
-	if (splineRefTest != NULL) {
-		splineRefComp = splineRefTest;
-		UpdateAndReconstructSpline();
+	USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(componentTemplate);
+	if (splineRefTemp != NULL) {
+		splineRefComp = splineRefTemp;
 	}
 
 	return Super::SetupComponent(attachParent, componentTemplate, componentName);
@@ -147,17 +149,26 @@ USceneComponent* AABCurveBeamHologram::SetupComponent(USceneComponent* attachPar
 //////////////////////////////////////////////////////
 void AABCurveBeamHologram::UpdateAndReconstructSpline()
 {
-	//*
+	/*
 	if (splineRefInt != NULL) {
 		UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE Interface: "));
 
 		splineRefInt->UpdateSplineData(true, startTangent, endPos, endTangent);
-	}
 
-	RerunConstructionScripts();
-	//*/
+		RerunConstructionScripts();
+	}
+	/*/
 	if (splineRefComp != NULL) {
-		UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE Component: "));
+		UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE Spline Component: "));
+
+		if (isBeamStarted) {
+			//USplineMeshComponent* splineRefTemp = DuplicateComponent(splineRefComp->GetAttachParent(), splineRefComp);
+			USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(CreateComponentFromTemplate(splineRefComp));
+			FinishAndRegisterComponent(splineRefTemp);
+			splineRefTemp->AttachTo(this->RootComponent);
+			//splineRefComp->UnregisterComponent();
+			//splineRefComp = splineRefTemp;
+		}
 
 		splineRefComp->SetStartTangent(startTangent, false);
 		splineRefComp->SetEndTangent(endTangent, false);

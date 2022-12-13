@@ -33,8 +33,8 @@ public:
 	virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
 
 protected:
-	virtual void PreConfigureActor(AFGBuildable* inBuildable) override;
-	virtual void ConfigureActor(AFGBuildable* inBuildable) const override;
+	//virtual void PreConfigureActor(AFGBuildable* inBuildable) override;
+	//virtual void ConfigureActor(AFGBuildable* inBuildable) const override;
 	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName) override;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
