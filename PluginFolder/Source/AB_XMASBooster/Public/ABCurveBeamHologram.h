@@ -24,8 +24,6 @@ public:
 	AABCurveBeamHologram();
 
 	// Begin AFGHologram interface
-	//virtual bool IsValidHitResult(const FHitResult& hitResult) const override;
-	//virtual bool TrySnapToActor(const FHitResult& hitResult) override;
 	virtual void GetSupportedBuildModes_Implementation(TArray< TSubclassOf<UFGHologramBuildModeDescriptor> >& out_buildmodes) const override;
 	virtual void OnBuildModeChanged() override;
 
@@ -33,8 +31,6 @@ public:
 	virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
 
 protected:
-	//virtual void PreConfigureActor(AFGBuildable* inBuildable) override;
-	//virtual void ConfigureActor(AFGBuildable* inBuildable) const override;
 	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName) override;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
@@ -52,8 +48,8 @@ protected:
 	FVector startTangent;
 	FVector endTangent;
 
-	IABICurveBeamHologram* splineRefInt = NULL;
 	USplineMeshComponent* splineRefComp = NULL;
+	USplineMeshComponent* splineRefGhost = NULL;
 
 	void UpdateAndReconstructSpline();
 };

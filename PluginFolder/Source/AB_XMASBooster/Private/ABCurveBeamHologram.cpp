@@ -106,31 +106,6 @@ void AABCurveBeamHologram::SetHologramLocationAndRotation(const FHitResult& hitR
 		UpdateAndReconstructSpline();
 	}
 }
-/*
-void AABCurveBeamHologram::PreConfigureActor(AFGBuildable* inBuildable)
-{
-	isBeamStarted = false;
-	isBeamComplete = false;
-
-	IABICurveBeamHologram* splineRefTemp = Cast<IABICurveBeamHologram>(inBuildable);
-	if (splineRefTemp != NULL) {
-		splineRefInt = splineRefTemp;
-	}
-
-	Super::PreConfigureActor(inBuildable);
-
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] PreConfig: %s"), (splineRefTest == NULL) ? TEXT("NO API") : TEXT("YES API"));
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] PreConfig: %s"), (splineRefTest == NULL) ? TEXT("NO API") : TEXT("YES API"));
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] PreConfig: %s"), (splineRefTest == NULL) ? TEXT("NO API") : TEXT("YES API"));
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] PreConfig: %s"), (splineRefTest == NULL) ? TEXT("NO API") : TEXT("YES API"));
-}
-
-void AABCurveBeamHologram::ConfigureActor(AFGBuildable* inBuildable) const
-{
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Config: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
-
-	Super::ConfigureActor(inBuildable);
-}*/
 
 USceneComponent* AABCurveBeamHologram::SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName)
 {
@@ -149,30 +124,37 @@ USceneComponent* AABCurveBeamHologram::SetupComponent(USceneComponent* attachPar
 //////////////////////////////////////////////////////
 void AABCurveBeamHologram::UpdateAndReconstructSpline()
 {
-	/*
-	if (splineRefInt != NULL) {
-		UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE Interface: "));
+	if (splineRefComp == NULL) { return; }
 
-		splineRefInt->UpdateSplineData(true, startTangent, endPos, endTangent);
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE Spline Component: "));
 
-		RerunConstructionScripts();
-	}
-	/*/
-	if (splineRefComp != NULL) {
-		UE_LOG(LogTemp, Warning, TEXT("[ABCB] UPDATE Spline Component: "));
+	if (isBeamStarted) {
+		USplineMeshComponent* splineRefTemp;
+		FCustomPrimitiveData cutomizerData;
 
-		if (isBeamStarted) {
-			//USplineMeshComponent* splineRefTemp = DuplicateComponent(splineRefComp->GetAttachParent(), splineRefComp);
-			USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(CreateComponentFromTemplate(splineRefComp));
-			FinishAndRegisterComponent(splineRefTemp);
-			splineRefTemp->AttachTo(this->RootComponent);
-			//splineRefComp->UnregisterComponent();
-			//splineRefComp = splineRefTemp;
+		// copy form the correct start but don't kill the real reference
+		if (splineRefGhost == NULL) {
+			splineRefTemp = Cast<USplineMeshComponent>(CreateComponentFromTemplate(splineRefComp));
+		} else {
+			splineRefTemp = Cast<USplineMeshComponent>(CreateComponentFromTemplate(splineRefGhost));
+			splineRefGhost->UnregisterComponent();
 		}
 
-		splineRefComp->SetStartTangent(startTangent, false);
-		splineRefComp->SetEndTangent(endTangent, false);
-		splineRefComp->SetEndPosition(endPos, true);
+		// properly attach new element
+		this->ApplyMeshPrimitiveData(this->mCustomizationData);
+		FinishAndRegisterComponent(splineRefTemp);
+		splineRefTemp->AttachTo(this->RootComponent);
+		splineRefGhost = splineRefTemp;
 	}
-	//*/
+
+	// actually set data
+	splineRefComp->SetStartTangent(startTangent, false);
+	splineRefComp->SetEndTangent(endTangent, false);
+	splineRefComp->SetEndPosition(endPos, true);
+
+	if (splineRefGhost != NULL) {
+		splineRefGhost->SetStartTangent(startTangent, false);
+		splineRefGhost->SetEndTangent(endTangent, false);
+		splineRefGhost->SetEndPosition(endPos, true);
+	}
 }
