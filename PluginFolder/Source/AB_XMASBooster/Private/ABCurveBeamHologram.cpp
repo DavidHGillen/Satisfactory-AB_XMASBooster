@@ -9,6 +9,9 @@ AABCurveBeamHologram::AABCurveBeamHologram() {
 	startTangent = defaultSplineLoc;
 	endPos = defaultSplineLoc;
 	endTangent = defaultSplineLoc;
+
+	isBeamStarted = false;
+	isBeamComplete = false;
 }
 
 // AFGHologram interface
@@ -25,10 +28,25 @@ void AABCurveBeamHologram::OnBuildModeChanged()
 {
 	Super::OnBuildModeChanged();
 
+	//TODO: this is hella wrong, but we'll get there
 	isBeamStarted = false;
 	isBeamComplete = false;
 
 	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
+
+	/*
+	if (beamMesh != NULL) {
+		beamMesh->SetVisibility(!isAnyCurvedBeamMode);
+		beamMesh->SetHiddenInGame(isAnyCurvedBeamMode);
+	}
+	if (splineRefComp != NULL) {
+		if (splineRefGhost != NULL) {
+			splineRefComp->SetVisibility(false);
+			splineRefGhost->SetVisibility(isAnyCurvedBeamMode);
+		} else {
+			splineRefComp->SetVisibility(isAnyCurvedBeamMode);
+		}
+	}*/
 
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Change: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
 }
@@ -111,11 +129,17 @@ USceneComponent* AABCurveBeamHologram::SetupComponent(USceneComponent* attachPar
 {
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Setup: %s %s"), isAnyCurvedBeamMode?TEXT("CRV"):TEXT("STR"), *(componentName.ToString()));
 
-	// Lets just keep track of our spline if we need it
+	// Lets keep track of our spline
 	USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(componentTemplate);
 	if (splineRefTemp != NULL) {
 		splineRefComp = splineRefTemp;
 	}
+
+	// And their beam mesh cause its private and I dont wnan fight that rn
+	/*UMeshComponent* meshRefTemp = Cast<UMeshComponent>(componentTemplate);
+	if (meshRefTemp != NULL) {
+		beamMesh = meshRefTemp;
+	}*/
 
 	return Super::SetupComponent(attachParent, componentTemplate, componentName);
 }

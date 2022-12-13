@@ -48,6 +48,7 @@ protected:
 	FVector startTangent;
 	FVector endTangent;
 
+	UMeshComponent* beamMesh;
 	USplineMeshComponent* splineRefComp = NULL;
 	USplineMeshComponent* splineRefGhost = NULL;
 
