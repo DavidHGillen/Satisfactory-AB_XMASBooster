@@ -2,29 +2,39 @@
 
 #pragma once
 
-#include "FactoryGame.h"
 #include "CoreMinimal.h"
-
-#include "FGBeamHologram.h"
+#include "Hologram/FGDecorHologram.h"
 #include "Components/SplineMeshComponent.h"
-#include "ABICurveBeamHologram.h"
 
-#include "ABCurveBeamHologram.generated.h"
+#include "ABCurvedDecorHologram.generated.h"
+
+UENUM()
+enum class EBendHoloState : uint8
+{
+	CDH_Placing =  0b0000,
+	CDH_Zooping =  0b0001,
+	CDH_Bend_A1 =  0b0010,
+	CDH_Bend_B1 =  0b0100,
+	CDH_Bend_B2 =  0b1000,
+
+	CDHM_Bending = 0b1110,
+	CDHM_BendIn =  0b0111,
+	CDHM_BendOut = 0b1011
+};
 
 /**
- * Provides a way to create a curvebeam by adding further buildmodes and steps to a regular beam
- * Expects the buildable to have a spline
+ * Provides a way to create a curved static mesh. Expects the buildable to have a Spline Mesh
  */
 UCLASS()
-class AB_XMASBOOSTER_API AABCurveBeamHologram : public AFGBeamHologram
+class AB_XMASBOOSTER_API AABCurvedDecorHologram : public AFGDecorHologram
 {
 	GENERATED_BODY()
 
 public:
-	AABCurveBeamHologram();
+	AABCurvedDecorHologram();
 
-	// Begin AFGHologram interface
 	virtual void GetSupportedBuildModes_Implementation(TArray< TSubclassOf<UFGHologramBuildModeDescriptor> >& out_buildmodes) const override;
+	virtual bool IsValidHitResult(const FHitResult& hitResult) const override;
 
 	virtual void OnBuildModeChanged() override;
 	virtual void PreHologramPlacement() override;
@@ -32,7 +42,7 @@ public:
 
 	virtual bool DoMultiStepPlacement(bool isInputFromARelease) override;
 	virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
-
+	
 protected:
 	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName) override;
 
@@ -43,17 +53,14 @@ protected:
 		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeCompoundCurve;
 
 	// Custom:
-	bool isBeamStarted = false;
-	bool isBeamComplete = false;
-	bool isAnyCurvedBeamMode = false;
-
 	FVector endPos;
 	FVector startTangent;
 	FVector endTangent;
 
-	UMeshComponent* beamMesh;
+	EBendHoloState eState;
+	bool isAnyCurvedBeamMode;
+
 	USplineMeshComponent* splineRefComp = NULL;
-	USplineMeshComponent* splineRefGhost = NULL;
 
 	void UpdateAndReconstructSpline();
 };

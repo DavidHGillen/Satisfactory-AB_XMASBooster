@@ -51,6 +51,18 @@ void AABCurveBeamHologram::OnBuildModeChanged()
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Change: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
 }
 
+void AABCurveBeamHologram::PreHologramPlacement()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] //// PREPLACE: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
+	Super::PreHologramPlacement();
+}
+
+void AABCurveBeamHologram::PostHologramPlacement()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] POSTPLACE ////: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
+	Super::PostHologramPlacement();
+}
+
 bool AABCurveBeamHologram::DoMultiStepPlacement(bool isInputFromARelease)
 {
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Multistep: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
@@ -136,10 +148,10 @@ USceneComponent* AABCurveBeamHologram::SetupComponent(USceneComponent* attachPar
 	}
 
 	// And their beam mesh cause its private and I dont wnan fight that rn
-	/*UMeshComponent* meshRefTemp = Cast<UMeshComponent>(componentTemplate);
+	UMeshComponent* meshRefTemp = Cast<UMeshComponent>(componentTemplate);
 	if (meshRefTemp != NULL) {
 		beamMesh = meshRefTemp;
-	}*/
+	}
 
 	return Super::SetupComponent(attachParent, componentTemplate, componentName);
 }
@@ -164,8 +176,13 @@ void AABCurveBeamHologram::UpdateAndReconstructSpline()
 			splineRefGhost->UnregisterComponent();
 		}
 
-		// properly attach new element
+		// properly configure new element
 		this->ApplyMeshPrimitiveData(this->mCustomizationData);
+		splineRefTemp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		splineRefTemp->SetRenderCustomDepth(true);
+		splineRefTemp->SetCustomDepthStencilValue(2);
+
+		// properly attach new element
 		FinishAndRegisterComponent(splineRefTemp);
 		splineRefTemp->AttachTo(this->RootComponent);
 		splineRefGhost = splineRefTemp;
