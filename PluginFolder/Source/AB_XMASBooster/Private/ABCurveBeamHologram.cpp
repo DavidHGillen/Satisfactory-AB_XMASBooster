@@ -5,6 +5,12 @@
 // Ctor
 //////////////////////////////////////////////////////
 AABCurveBeamHologram::AABCurveBeamHologram() {
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bAllowTickOnDedicatedServer = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
+
+	PrimaryActorTick.SetTickFunctionEnable(true);
+
 	FVector defaultSplineLoc = FVector(0.0f, 0.0f, 400.0f);
 	startTangent = defaultSplineLoc;
 	endPos = defaultSplineLoc;

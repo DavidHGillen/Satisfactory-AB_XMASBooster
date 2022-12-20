@@ -1,21 +1,30 @@
 // Copyright David "Angry Beaver" Gillen, details listed on associated mods Readme
 
+#include "Math/UnrealMathUtility.h"
 #include "ABCurvedDecorHologram.h"
 
 // Ctor
 //////////////////////////////////////////////////////
 AABCurvedDecorHologram::AABCurvedDecorHologram() {
-	FVector defaultSplineLoc = FVector(0.0f, 0.0f, 400.0f);
-	startTangent = defaultSplineLoc;
-	endPos = defaultSplineLoc;
-	endTangent = defaultSplineLoc;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bAllowTickOnDedicatedServer = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
+
+	PrimaryActorTick.SetTickFunctionEnable(true);
 
 	//mDecorMeshComponentName = "mSplineMesh";
-	eState = EBendHoloState::CDH_Placing;
+	ResetLine();
+	UpdateAndReconstructSpline();
 }
 
 // AFGHologram interface
 //////////////////////////////////////////////////////
+void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] RepProps:"));
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+}
+
 void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGHologramBuildModeDescriptor>>& out_buildmodes) const
 {
 	Super::GetSupportedBuildModes_Implementation(out_buildmodes);
@@ -26,42 +35,69 @@ void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubcl
 
 bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const
 {
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] IsValid:"));
 	return true;
+}
+
+int32 AABCurvedDecorHologram::GetBaseCostMultiplier() const
+{
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Cost: %d"), FMath::RoundHalfFromZero(length / lengthPerCost));
+	//TODO:
+	//TODO:
+	//TODO:
+	//TODO:
+	//TODO:
+	return 1;
+}
+
+void AABCurvedDecorHologram::BeginPlay()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] BeginPlay:"));
+
+	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
+
+	eState = EBendHoloState::CDH_Placing;
+	ResetLine();
+	UpdateAndReconstructSpline();
+
+	Super::BeginPlay();
 }
 
 void AABCurvedDecorHologram::OnBuildModeChanged()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Change: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
 	Super::OnBuildModeChanged();
 
 	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
 
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Change: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
+	eState = EBendHoloState::CDH_Placing;
+	ResetLine();
+	UpdateAndReconstructSpline();
 }
 
 void AABCurvedDecorHologram::PreHologramPlacement()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] //// PREPLACE: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] //// PREPLACE:"));
 	UpdateAndReconstructSpline();
 	Super::PreHologramPlacement();
 }
 
 void AABCurvedDecorHologram::PostHologramPlacement()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] POSTPLACE ////: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
 	UpdateAndReconstructSpline();
 	Super::PostHologramPlacement();
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] POSTPLACE ////:"));
 }
 
 bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Multistep: %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"));
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Multistep begin: %d"), eState);
 
 	bool bComplete = false;
 
 	switch (eState) {
 		case EBendHoloState::CDH_Placing:
-			Super::DoMultiStepPlacement(isInputFromARelease);
-			bComplete = false;
+			bComplete = !isAnyCurvedBeamMode;
 			eState = EBendHoloState::CDH_Zooping;
 			break;
 
@@ -92,6 +128,8 @@ bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease)
 	}
 
 	UpdateAndReconstructSpline();
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Multistep end: %d %s"), eState, bComplete ? TEXT("True") : TEXT("False"));
 	return bComplete;
 }
 
@@ -103,33 +141,39 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 
 	if (hitActor == NULL) {
 		// cast the point out into space along the look vector
+		/*
+		GetConstructionInstigator()->GetControlRotation();
+		GetConstructionInstigator()->GetActorLocation();
+		*/
 		localSnappedHitLocation = FVector(100.0f); // TODO:
 	}
 	else {
 		// convert to the space of the hit object, snap in it, then convert back to world, then world to our space
 		localSnappedHitLocation = ActorToWorld().InverseTransformPosition(
 			hitToWorld.TransformPosition(
-				hitToWorld.InverseTransformPosition(hitResult.ImpactPoint).GridSnap(mGridSnapSize)
+				hitToWorld.InverseTransformPosition(hitResult.ImpactPoint).GridSnap(50)
 			)
 		);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Set loc-rot: %s @%d,%d,%d "), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"),
-		localSnappedHitLocation.X / 100, localSnappedHitLocation.Y / 100, localSnappedHitLocation.Z / 100);
-
-	// behave like normal till we enter further states
-	if (eState == EBendHoloState::CDH_Placing) {
-		Super::SetHologramLocationAndRotation(hitResult);
+	// if our snap hasn't moved nothing needs changing
+	FVector test = lastHit;
+	lastHit = localSnappedHitLocation;
+	if (!localSnappedHitLocation.Equals(test)) {
+		UE_LOG(LogTemp, Warning, TEXT("[ABCB] SET LOCROT: %s"), TEXT("NON"));
 		return;
 	}
 
-	// if our snap hasn't moved nothing needs changing
-	if (!localSnappedHitLocation.Equals(endPos)) {
-		return;
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] SET LOCROT: %d %d %d"), localSnappedHitLocation.X, localSnappedHitLocation.Y, localSnappedHitLocation.Z);
+
+	// just move the object
+	if (eState == EBendHoloState::CDH_Placing) {
+		SetActorLocationAndRotation(localSnappedHitLocation, FQuat(hitResult.ImpactNormal, 0).Rotator());
 	}
 
 	// length = in tangent = out tanget >>>> evenly distributed straight spline
 	if (eState == EBendHoloState::CDH_Zooping) {
+		//TODO: point the buildable along this line, it's cleaner
 		endPos = localSnappedHitLocation;
 	}
 
@@ -144,9 +188,20 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	UpdateAndReconstructSpline();
 }
 
+void AABCurvedDecorHologram::CheckValidPlacement()
+{
+	Super::CheckValidPlacement();
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] CheckValid:"));
+}
+
+/*void AABCurvedDecorHologram::ConfigureActor(AFGBuildable* inBuildable) const
+{
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Config:"));
+}*/
+
 USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Setup: %s %s"), isAnyCurvedBeamMode ? TEXT("CRV") : TEXT("STR"), *(componentName.ToString()));
+	UE_LOG(LogTemp, Warning, TEXT("[ABCB] Setup: %s"), *(componentName.ToString()));
 
 	// Lets keep track of our spline
 	USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(componentTemplate);
@@ -170,5 +225,16 @@ void AABCurvedDecorHologram::UpdateAndReconstructSpline()
 	splineRefComp->SetStartTangent(startTangent, false);
 	splineRefComp->SetEndTangent(endTangent, false);
 	splineRefComp->SetEndPosition(endPos, true);
+
+	SetIsChanged(true);
 }
 
+void AABCurvedDecorHologram::ResetLine()
+{
+	FVector defaultSplineLoc = FVector(0.0f, 0.0f, 400.0f);
+	startTangent = defaultSplineLoc;
+	endPos = defaultSplineLoc;
+	endTangent = defaultSplineLoc;
+
+	eState = EBendHoloState::CDH_Placing;
+}
