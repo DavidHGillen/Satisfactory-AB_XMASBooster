@@ -49,9 +49,18 @@ int32 AABCurvedDecorHologram::GetBaseCostMultiplier() const
 	return 1;
 }
 
+void AABCurvedDecorHologram::ConfigureActor(AFGBuildable* inBuildable) const
+{
+	Super::ConfigureActor(inBuildable);
+
+	return;
+}
+
 void AABCurvedDecorHologram::BeginPlay()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[ABCB] BeginPlay:"));
+
+
 
 	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
 

@@ -38,6 +38,7 @@ public:
 	virtual bool IsValidHitResult(const FHitResult& hitResult) const override;
 	virtual int32 GetBaseCostMultiplier() const;
 
+	virtual void ConfigureActor(class AFGBuildable* inBuildable) const override;
 	virtual void BeginPlay() override;
 	virtual void OnBuildModeChanged() override;
 	virtual void PreHologramPlacement() override;
