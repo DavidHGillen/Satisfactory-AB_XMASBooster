@@ -26,7 +26,7 @@ enum class EBendHoloState : uint8
  * Provides a way to create a curved static mesh. Expects the buildable to have a Spline Mesh
  */
 UCLASS()
-class AB_XMASBOOSTER_API AABCurvedDecorHologram : public AFGHologram
+class AB_XMASBOOSTER_API AABCurvedDecorHologram : public AFGBuildableHologram
 {
 	GENERATED_BODY()
 

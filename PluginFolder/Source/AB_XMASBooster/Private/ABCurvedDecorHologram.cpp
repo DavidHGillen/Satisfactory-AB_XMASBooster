@@ -12,7 +12,6 @@ AABCurvedDecorHologram::AABCurvedDecorHologram() {
 
 	PrimaryActorTick.SetTickFunctionEnable(true);
 
-	//mDecorMeshComponentName = "mSplineMesh";
 	ResetLine();
 	UpdateAndReconstructSpline();
 }
@@ -159,7 +158,7 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	// if our snap hasn't moved nothing needs changing
 	FVector test = lastHit;
 	lastHit = localSnappedHitLocation;
-	if (!localSnappedHitLocation.Equals(test)) {
+	if (localSnappedHitLocation.Equals(test)) {
 		UE_LOG(LogTemp, Warning, TEXT("[ABCB] SET LOCROT: %s"), TEXT("NON"));
 		return;
 	}
@@ -207,7 +206,16 @@ USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachP
 	USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(componentTemplate);
 	if (splineRefTemp != NULL) {
 		splineRefComp = splineRefTemp;
+
 		UpdateAndReconstructSpline();
+
+		splineRefComp->SetupAttachment(this->RootComponent);
+		splineRefComp->RegisterComponent();
+
+		UFGBlueprintFunctionLibrary::ShowOutline(splineRefComp, EOutlineColor::OC_HOLOGRAM);
+		//UFGBlueprintFunctionLibrary::ApplyCustomizationPrimitiveData(this, mCustomizationData, this->mCustomizationData.ColorSlot, splineRefComp);
+
+		return splineRefComp;
 	}
 
 	return Super::SetupComponent(attachParent, componentTemplate, componentName);
