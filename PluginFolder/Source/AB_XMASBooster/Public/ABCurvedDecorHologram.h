@@ -33,23 +33,14 @@ class AB_XMASBOOSTER_API AABCurvedDecorHologram : public AFGGenericBuildableHolo
 public:
 	AABCurvedDecorHologram();
 
-	//virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
 	virtual void GetSupportedBuildModes_Implementation(TArray< TSubclassOf<UFGHologramBuildModeDescriptor> >& out_buildmodes) const override;
-	//virtual bool IsValidHitResult(const FHitResult& hitResult) const override;
 	virtual int32 GetBaseCostMultiplier() const;
-
-	//virtual void ConfigureActor(class AFGBuildable* inBuildable) const override;
-	//virtual void BeginPlay() override;
 	virtual void OnBuildModeChanged() override;
-	//virtual void PreHologramPlacement() override;
-	//virtual void PostHologramPlacement() override;
 
 	virtual bool DoMultiStepPlacement(bool isInputFromARelease) override;
 	virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
 	
 protected:
-	//virtual void CheckValidPlacement() override;
-	//virtual void ConfigureActor(class AFGBuildable* inBuildable) const override;
 	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName) override;
 
 	// Custom:
@@ -78,8 +69,9 @@ protected:
 	EBendHoloState eState;
 	bool isAnyCurvedBeamMode;
 
-	USplineMeshComponent* splineRefComp = NULL;
+	USplineMeshComponent* splineRefHolo = NULL;
+	USplineMeshComponent* splineRefBuild = NULL;
 
 	void UpdateAndReconstructSpline();
-	void ResetLine();
+	void ResetLineData();
 };
