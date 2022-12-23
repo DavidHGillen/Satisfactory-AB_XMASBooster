@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Hologram/FGBuildableHologram.h"
+#include "FGGenericBuildableHologram.h"
 #include "Components/SplineMeshComponent.h"
 
 #include "ABCurvedDecorHologram.generated.h"
@@ -26,32 +26,33 @@ enum class EBendHoloState : uint8
  * Provides a way to create a curved static mesh. Expects the buildable to have a Spline Mesh
  */
 UCLASS()
-class AB_XMASBOOSTER_API AABCurvedDecorHologram : public AFGBuildableHologram
+class AB_XMASBOOSTER_API AABCurvedDecorHologram : public AFGGenericBuildableHologram
 {
 	GENERATED_BODY()
 
 public:
 	AABCurvedDecorHologram();
 
-	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
+	//virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
 	virtual void GetSupportedBuildModes_Implementation(TArray< TSubclassOf<UFGHologramBuildModeDescriptor> >& out_buildmodes) const override;
-	virtual bool IsValidHitResult(const FHitResult& hitResult) const override;
+	//virtual bool IsValidHitResult(const FHitResult& hitResult) const override;
 	virtual int32 GetBaseCostMultiplier() const;
 
-	virtual void ConfigureActor(class AFGBuildable* inBuildable) const override;
-	virtual void BeginPlay() override;
+	//virtual void ConfigureActor(class AFGBuildable* inBuildable) const override;
+	//virtual void BeginPlay() override;
 	virtual void OnBuildModeChanged() override;
-	virtual void PreHologramPlacement() override;
-	virtual void PostHologramPlacement() override;
+	//virtual void PreHologramPlacement() override;
+	//virtual void PostHologramPlacement() override;
 
 	virtual bool DoMultiStepPlacement(bool isInputFromARelease) override;
 	virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
 	
 protected:
-	virtual void CheckValidPlacement() override;
+	//virtual void CheckValidPlacement() override;
 	//virtual void ConfigureActor(class AFGBuildable* inBuildable) const override;
 	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName) override;
 
+	// Custom:
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
 		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeCurved;
 
@@ -67,7 +68,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram")
 		float lengthPerCost;
 
-	// Custom:
 	float length;
 
 	FVector lastHit;
