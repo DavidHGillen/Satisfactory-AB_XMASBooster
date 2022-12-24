@@ -1,7 +1,7 @@
 // Copyright David "Angry Beaver" Gillen, details listed on associated mods Readme
 
-#include "Math/UnrealMathUtility.h"
 #include "ABCurvedDecorHologram.h"
+#include "Math/UnrealMathUtility.h"
 
 // Ctor
 //////////////////////////////////////////////////////
@@ -18,6 +18,12 @@ void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubcl
 
 	if (mBuildModeCurved) { out_buildmodes.AddUnique(mBuildModeCurved); }
 	if (mBuildModeCompoundCurve) { out_buildmodes.AddUnique(mBuildModeCompoundCurve); }
+}
+
+bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const
+{
+	// I mean this may have some unintended hits, but I want my beam to register and the rest is just funny.
+	return true;
 }
 
 int32 AABCurvedDecorHologram::GetBaseCostMultiplier() const
@@ -129,20 +135,20 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 		snappedHitLocation = ActorToWorld().InverseTransformPosition(snappedHitLocation);
 
 		endPos = snappedHitLocation;
-		startTangent = snappedHitLocation;
-		endTangent = (endPos - snappedHitLocation);
+		startTangent = snappedHitLocation * 0.99f; // If these are "exact" floating points can decide things are backwards
+		endTangent = snappedHitLocation * 0.99f; // If these are "exact" floating points can decide things are backwards
 		markerBall->SetRelativeLocation(snappedHitLocation);
 
 	} else {
 		if ((uint8)eState & (uint8)EBendHoloState::CDHM_BendIn) {
-			startTangent = snappedHitLocation * 2.0f;
+			startTangent = snappedHitLocation * 2.0f; // Overblow the movement so it's easier to make good curves
 		}
 
 		if ((uint8)eState & (uint8)EBendHoloState::CDHM_BendOut) {
-			endTangent = (endPos - snappedHitLocation) * 2.0f;
+			endTangent = (endPos - snappedHitLocation) * 2.0f; // Overblow the movement so it's easier to make good curves
 		}
 
-		markerBall->SetRelativeLocation(snappedHitLocation);
+		markerBall->SetRelativeLocation(snappedHitLocation * 2.0f);
 	}
 
 	UpdateAndReconstructSpline();
@@ -164,6 +170,9 @@ USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachP
 		splineRefHolo->ComponentTags.Add(HOLOGRAM_MESH_TAG);
 		splineRefHolo->RegisterComponent();
 
+		splineRefHolo->SetBoundaryMin(0.0f, false);
+		splineRefHolo->SetBoundaryMax(400.0f, false);
+
 		UpdateAndReconstructSpline();
 
 		UFGBlueprintFunctionLibrary::ShowOutline(splineRefHolo, EOutlineColor::OC_HOLOGRAM);
@@ -172,17 +181,22 @@ USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachP
 		return splineRefHolo;
 	}
 
-	// There's only 1 other static mesh, so lets use it //TODO: disappears?!?!?
-	UMeshComponent* markerTemp = Cast<UMeshComponent>(componentTemplate);
+	// Behave like normal
+	USceneComponent* result = Super::SetupComponent(attachParent, componentTemplate, componentName);
+
+	// There's only 1 other static mesh, so lets use it for the marker //TODO: this is wrong but I'm lazy and it's ?working?
+	UMeshComponent* markerTemp = Cast<UMeshComponent>(result);
 	if (markerTemp != NULL) { markerBall = markerTemp; }
 
-	return Super::SetupComponent(attachParent, componentTemplate, componentName);
+	return result;
 }
 
 // Custom:
 //////////////////////////////////////////////////////
 void AABCurvedDecorHologram::UpdateAndReconstructSpline()
 {
+	//UE_LOG(LogTemp, Warning, TEXT("[[[ %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
+	
 	if (eState == EBendHoloState::CDH_Placing) {
 		length = lengthPerCost; // cost minimum until people draw a line
 	} else {
@@ -191,14 +205,14 @@ void AABCurvedDecorHologram::UpdateAndReconstructSpline()
 
 	// actually set data
 	if (splineRefHolo != NULL) {
+		splineRefHolo->SetEndPosition(endPos, false);
 		splineRefHolo->SetStartTangent(startTangent, false);
-		splineRefHolo->SetEndTangent(endTangent, false);
-		splineRefHolo->SetEndPosition(endPos, true);
+		splineRefHolo->SetEndTangent(endTangent, true);
 	}
 	if (splineRefBuild != NULL) {
+		splineRefBuild->SetEndPosition(endPos, false);
 		splineRefBuild->SetStartTangent(startTangent, false);
-		splineRefBuild->SetEndTangent(endTangent, false);
-		splineRefBuild->SetEndPosition(endPos, true);
+		splineRefBuild->SetEndTangent(endTangent, true);
 	}
 
 	SetIsChanged(true);
@@ -208,8 +222,8 @@ void AABCurvedDecorHologram::ResetLineData()
 {
 	FVector defaultSplineLoc = FVector(0.0f, 0.0f, 400.0f);
 	startTangent = defaultSplineLoc;
-	endPos = defaultSplineLoc;
-	endTangent = defaultSplineLoc;
+	endPos = defaultSplineLoc * 0.99f;
+	endTangent = defaultSplineLoc *0.99f;
 
 	eState = EBendHoloState::CDH_Placing;
 

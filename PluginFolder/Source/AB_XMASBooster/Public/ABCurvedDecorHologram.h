@@ -34,6 +34,7 @@ public:
 	AABCurvedDecorHologram();
 
 	virtual void GetSupportedBuildModes_Implementation(TArray< TSubclassOf<UFGHologramBuildModeDescriptor> >& out_buildmodes) const override;
+	virtual bool IsValidHitResult(const FHitResult& hitResult) const override;
 	virtual int32 GetBaseCostMultiplier() const;
 	virtual void OnBuildModeChanged() override;
 
