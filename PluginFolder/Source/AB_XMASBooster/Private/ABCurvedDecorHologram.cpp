@@ -1,7 +1,9 @@
 // Copyright David "Angry Beaver" Gillen, details listed on associated mods Readme
 
 #include "ABCurvedDecorHologram.h"
+
 #include "Math/UnrealMathUtility.h"
+#include "FGConstructDisqualifier.h"
 
 // Ctor
 //////////////////////////////////////////////////////
@@ -22,8 +24,8 @@ void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubcl
 
 bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const
 {
-	// I mean this may have some unintended hits, but I want my beam to register and the rest is just funny.
-	return true;
+	if (Cast<AFGBuildable>(hitResult.GetActor()) != NULL) { return true; }
+	return Super::IsValidHitResult(hitResult);
 }
 
 int32 AABCurvedDecorHologram::GetBaseCostMultiplier() const
@@ -52,7 +54,7 @@ bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease)
 			break;
 
 		case EBendHoloState::CDH_Zooping:
-			if (length < mGridSnapSize) { return false; } // Don't allow short lines. //TODO: probably not where to do it
+			//if (length < mGridSnapSize) { return false; } // Don't allow short lines. //TODO: probably not where to do it
 
 			if (IsCurrentBuildMode(mBuildModeCurved)) {
 				eState = EBendHoloState::CDH_Bend_A1;
@@ -89,15 +91,16 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 		if (eState == EBendHoloState::CDH_Placing) {
 			// stay where you were cause where the hell else would you go
 			snappedHitLocation = lastHit;
+			AddConstructDisqualifier(UFGCDInvalidAimLocation::StaticClass());
 		} else {
 			// cast the point out into space along the look vector
 			APawn* player = GetConstructionInstigator();
-			snappedHitLocation = player->GetActorLocation() + player->GetControlRotation().RotateVector(FVector(maxLength,0.0f,0.0f));
+			FVector farSight = FVector(eState == EBendHoloState::CDH_Zooping ? maxLength : maxBend, 0.0f, 0.0f);
+			snappedHitLocation = player->GetActorLocation() + player->GetControlRotation().Vector() * farSight;
 		}
 	} else {
-
 		if (Cast<AFGBuildable>(hitActor) != NULL) {
-			// snap into factory space accounting for scaled actor
+			// world location when snaped in local space on factory objects
 			FVector scaledSnap = FVector(mGridSnapSize) / hitActor->GetActorScale();
 			snappedHitLocation = hitToWorld.InverseTransformPosition(hitResult.ImpactPoint);
 			snappedHitLocation = hitToWorld.TransformPosition(FVector(
@@ -105,13 +108,18 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 				FMath::GridSnap(snappedHitLocation.Y, scaledSnap.Y),
 				FMath::GridSnap(snappedHitLocation.Z, scaledSnap.Z)
 			));
+		} else {
+			// world location of the thing whatever it is
+			snappedHitLocation = hitResult.ImpactPoint;
 		}
 
 		if (eState != EBendHoloState::CDH_Placing) {
-			// reproject into local space for local co-ordinates
+			// reproject from world into local co-ordinates
 			snappedHitLocation = ActorToWorld().InverseTransformPosition(snappedHitLocation);
 		}
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[[[ %s ]]]"), *snappedHitLocation.ToString());
 
 	// if our snap hasn't moved nothing needs changing
 	FVector test = lastHit;
@@ -125,6 +133,10 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 		SetActorLocation(snappedHitLocation);
 		SetActorRotation(hitResult.ImpactNormal.ToOrientationRotator());
 		markerBall->SetRelativeLocation(FVector::ZeroVector);
+
+		UpdateAndReconstructSpline();
+
+		return;
 	}
 
 	// length = in tangent = out tanget >>>> evenly distributed straight spline
@@ -152,6 +164,13 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	}
 
 	UpdateAndReconstructSpline();
+
+	if (length < mGridSnapSize) {
+		AddConstructDisqualifier(UFGCDInvalidAimLocation::StaticClass());
+	}
+	if (snappedHitLocation.Size() > maxBend * 1.01f) {
+		AddConstructDisqualifier(UFGCDInvalidAimLocation::StaticClass());
+	}
 }
 
 USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName)
@@ -195,7 +214,7 @@ USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachP
 //////////////////////////////////////////////////////
 void AABCurvedDecorHologram::UpdateAndReconstructSpline()
 {
-	//UE_LOG(LogTemp, Warning, TEXT("[[[ %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("[[[ %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
 	
 	if (eState == EBendHoloState::CDH_Placing) {
 		length = lengthPerCost; // cost minimum until people draw a line
