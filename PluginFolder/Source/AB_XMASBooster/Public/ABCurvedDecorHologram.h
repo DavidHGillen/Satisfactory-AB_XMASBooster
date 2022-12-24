@@ -69,6 +69,7 @@ protected:
 	EBendHoloState eState;
 	bool isAnyCurvedBeamMode;
 
+	UMeshComponent* markerBall = NULL;
 	USplineMeshComponent* splineRefHolo = NULL;
 	USplineMeshComponent* splineRefBuild = NULL;
 

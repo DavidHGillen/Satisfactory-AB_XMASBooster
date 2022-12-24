@@ -22,12 +22,7 @@ void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubcl
 
 int32 AABCurvedDecorHologram::GetBaseCostMultiplier() const
 {
-	//TODO:
-	//TODO:
-	//TODO:
-	//TODO:
-	//TODO:
-	return 1;
+	return FMath::RoundHalfFromZero(length / lengthPerCost);
 }
 
 void AABCurvedDecorHologram::OnBuildModeChanged()
@@ -51,6 +46,8 @@ bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease)
 			break;
 
 		case EBendHoloState::CDH_Zooping:
+			if (length < mGridSnapSize) { return false; } // Don't allow short lines. //TODO: probably not where to do it
+
 			if (IsCurrentBuildMode(mBuildModeCurved)) {
 				eState = EBendHoloState::CDH_Bend_A1;
 			} else if(IsCurrentBuildMode(mBuildModeCompoundCurve)) {
@@ -94,11 +91,14 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	} else {
 
 		if (Cast<AFGBuildable>(hitActor) != NULL) {
-			// snap into factory space
-			//TODO: account for scaled factory things with snap
-			snappedHitLocation = hitToWorld.TransformPosition(
-				hitToWorld.InverseTransformPosition(hitResult.ImpactPoint).GridSnap(50)
-			);
+			// snap into factory space accounting for scaled actor
+			FVector scaledSnap = FVector(mGridSnapSize) / hitActor->GetActorScale();
+			snappedHitLocation = hitToWorld.InverseTransformPosition(hitResult.ImpactPoint);
+			snappedHitLocation = hitToWorld.TransformPosition(FVector(
+				FMath::GridSnap(snappedHitLocation.X, scaledSnap.X),
+				FMath::GridSnap(snappedHitLocation.Y, scaledSnap.Y),
+				FMath::GridSnap(snappedHitLocation.Z, scaledSnap.Z)
+			));
 		}
 
 		if (eState != EBendHoloState::CDH_Placing) {
@@ -117,15 +117,22 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	// just move the object
 	if (eState == EBendHoloState::CDH_Placing) {
 		SetActorLocation(snappedHitLocation);
-		SetActorRotation(FQuat(hitResult.ImpactNormal, 0));
+		SetActorRotation(hitResult.ImpactNormal.ToOrientationRotator());
+		markerBall->SetRelativeLocation(FVector::ZeroVector);
 	}
 
 	// length = in tangent = out tanget >>>> evenly distributed straight spline
 	if (eState == EBendHoloState::CDH_Zooping) {
-		//TODO: point the buildable along this line, it's what users and other mods expect
+		// point the buildable along the line and redo setup //TODO: optimize
+		snappedHitLocation = ActorToWorld().TransformPosition(snappedHitLocation);
+		SetActorRotation((snappedHitLocation - GetActorLocation()).ToOrientationRotator());
+		snappedHitLocation = ActorToWorld().InverseTransformPosition(snappedHitLocation);
+
 		endPos = snappedHitLocation;
 		startTangent = snappedHitLocation;
 		endTangent = (endPos - snappedHitLocation);
+		markerBall->SetRelativeLocation(snappedHitLocation);
+
 	} else {
 		if ((uint8)eState & (uint8)EBendHoloState::CDHM_BendIn) {
 			startTangent = snappedHitLocation * 2.0f;
@@ -134,6 +141,8 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 		if ((uint8)eState & (uint8)EBendHoloState::CDHM_BendOut) {
 			endTangent = (endPos - snappedHitLocation) * 2.0f;
 		}
+
+		markerBall->SetRelativeLocation(snappedHitLocation);
 	}
 
 	UpdateAndReconstructSpline();
@@ -163,6 +172,10 @@ USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachP
 		return splineRefHolo;
 	}
 
+	// There's only 1 other static mesh, so lets use it //TODO: disappears?!?!?
+	UMeshComponent* markerTemp = Cast<UMeshComponent>(componentTemplate);
+	if (markerTemp != NULL) { markerBall = markerTemp; }
+
 	return Super::SetupComponent(attachParent, componentTemplate, componentName);
 }
 
@@ -170,6 +183,12 @@ USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachP
 //////////////////////////////////////////////////////
 void AABCurvedDecorHologram::UpdateAndReconstructSpline()
 {
+	if (eState == EBendHoloState::CDH_Placing) {
+		length = lengthPerCost; // cost minimum until people draw a line
+	} else {
+		length = endPos.Size(); //TODO: curving should cost something but is expensive to calc
+	}
+
 	// actually set data
 	if (splineRefHolo != NULL) {
 		splineRefHolo->SetStartTangent(startTangent, false);
@@ -193,4 +212,6 @@ void AABCurvedDecorHologram::ResetLineData()
 	endTangent = defaultSplineLoc;
 
 	eState = EBendHoloState::CDH_Placing;
+
+	if (markerBall) { markerBall->SetRelativeLocation(FVector::ZeroVector); }
 }
