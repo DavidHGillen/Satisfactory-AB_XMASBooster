@@ -14,7 +14,7 @@ AABCurvedDecorHologram::AABCurvedDecorHologram() {
 	ResetLineData();
 }
 
-void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGHologramBuildModeDescriptor>>& out_buildmodes) const
+void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGBuildGunModeDescriptor>>& out_buildmodes) const
 {
 	Super::GetSupportedBuildModes_Implementation(out_buildmodes);
 
@@ -33,9 +33,9 @@ int32 AABCurvedDecorHologram::GetBaseCostMultiplier() const
 	return FMath::RoundHalfFromZero(length / lengthPerCost);
 }
 
-void AABCurvedDecorHologram::OnBuildModeChanged()
+void AABCurvedDecorHologram::OnBuildModeChanged(TSubclassOf<UFGHologramBuildModeDescriptor> buildMode)
 {
-	Super::OnBuildModeChanged();
+	Super::OnBuildModeChanged(buildMode);
 
 	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
 	eState = EBendHoloState::CDH_Placing;
@@ -173,7 +173,7 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	}
 }
 
-USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName)
+USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName, const FName& attachSocketName)
 {
 	// Lets keep track of our spline and set it up
 	USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(componentTemplate);
@@ -201,7 +201,7 @@ USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachP
 	}
 
 	// Behave like normal
-	USceneComponent* result = Super::SetupComponent(attachParent, componentTemplate, componentName);
+	USceneComponent* result = Super::SetupComponent(attachParent, componentTemplate, componentName, attachSocketName);
 
 	// There's only 1 other static mesh, so lets use it for the marker //TODO: this is wrong but I'm lazy and it's ?working?
 	UMeshComponent* markerTemp = Cast<UMeshComponent>(result);

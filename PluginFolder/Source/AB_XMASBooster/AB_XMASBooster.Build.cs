@@ -1,6 +1,9 @@
 using UnrealBuildTool;
 using System.IO;
 using System;
+using System.Runtime.InteropServices;
+using System.Text;
+using EpicGames.Core;
 
 public class AB_XMASBooster : ModuleRules
 {
@@ -8,22 +11,33 @@ public class AB_XMASBooster : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[] {
-			"Core", "CoreUObject",
-			"Engine",
-			"InputCore",
-			"OnlineSubsystem", "OnlineSubsystemUtils", "OnlineSubsystemNULL",
-			"SignificanceManager",
-			"PhysX", "APEX", "PhysXVehicles", "ApexDestruction",
-			"AkAudio",
-			"ReplicationGraph",
-			"UMG",
-			"AIModule",
-			"NavigationSystem",
-			"AssetRegistry",
-			"GameplayTasks",
-			"AnimGraphRuntime",
-			"Slate", "SlateCore",
-			"Json"
+            "Core", "CoreUObject",
+            "Engine",
+            "DeveloperSettings",
+            "PhysicsCore",
+            "InputCore",
+            "OnlineSubsystem", "OnlineSubsystemNull", "OnlineSubsystemUtils",
+            "SignificanceManager",
+            "GeometryCollectionEngine",
+            "ChaosVehiclesCore", "ChaosVehicles", "ChaosSolverEngine",
+            "AnimGraphRuntime",
+            "AkAudio",
+            "AssetRegistry",
+            "NavigationSystem",
+            "ReplicationGraph",
+            "AIModule",
+            "GameplayTasks",
+            "SlateCore", "Slate", "UMG",
+            "InstancedSplines",
+            "RenderCore",
+            "CinematicCamera",
+            "Foliage",
+            "Niagara",
+            "EnhancedInput",
+            "GameplayCameras",
+            "TemplateSequence",
+            "NetCore",
+            "GameplayTags",
 		});
 
 
