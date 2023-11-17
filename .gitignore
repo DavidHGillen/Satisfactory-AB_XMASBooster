@@ -11,6 +11,7 @@ _promo/*.afdesign
 *.sbsar
 *.fbx
 _*Ref.*
+*_bak[0-9].hipnc
 desktop.ini
 /PluginFolder/Saved
 /PluginFolder/Binaries
