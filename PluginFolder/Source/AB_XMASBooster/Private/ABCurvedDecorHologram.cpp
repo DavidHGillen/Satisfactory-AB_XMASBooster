@@ -4,14 +4,27 @@
 
 #include "Math/UnrealMathUtility.h"
 #include "FGConstructDisqualifier.h"
+#include "Net/UnrealNetwork.h"
 
 // Ctor
 //////////////////////////////////////////////////////
 AABCurvedDecorHologram::AABCurvedDecorHologram() {
-	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
+	mCanLockHologram = true;
+	mCanNudgeHologram = true;
+	mSnapToGuideLines = false;
+	mCanSnapWithAttachmentPoints = false;
+
+	isAnyCurvedBeamMode = false;
 	eState = EBendHoloState::CDH_Placing;
 
 	ResetLineData();
+}
+
+void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AABCurvedDecorHologram, endPos);
+	DOREPLIFETIME(AABCurvedDecorHologram, startTangent);
+	DOREPLIFETIME(AABCurvedDecorHologram, endTangent);
 }
 
 void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGBuildGunModeDescriptor>>& out_buildmodes) const
@@ -20,10 +33,12 @@ void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubcl
 
 	if (mBuildModeCurved) { out_buildmodes.AddUnique(mBuildModeCurved); }
 	if (mBuildModeCompoundCurve) { out_buildmodes.AddUnique(mBuildModeCompoundCurve); }
+	if (mBuildModeDrawing) { out_buildmodes.AddUnique(mBuildModeDrawing); }
 }
 
 bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const
 {
+	// all buildables are valid targets, but we also need to check for valid natural targets. We can let vanilla do that step.
 	if (Cast<AFGBuildable>(hitResult.GetActor()) != NULL) { return true; }
 	return Super::IsValidHitResult(hitResult);
 }
@@ -49,13 +64,12 @@ bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease)
 	bool bComplete = false;
 
 	switch (eState) {
+		// precise modes each add another step after the last, from straight to defining one or two curved points
 		case EBendHoloState::CDH_Placing:
 			eState = EBendHoloState::CDH_Zooping;
 			break;
 
 		case EBendHoloState::CDH_Zooping:
-			//if (length < mGridSnapSize) { return false; } // Don't allow short lines. //TODO: probably not where to do it
-
 			if (IsCurrentBuildMode(mBuildModeCurved)) {
 				eState = EBendHoloState::CDH_Bend_A1;
 			} else if(IsCurrentBuildMode(mBuildModeCompoundCurve)) {
@@ -74,6 +88,19 @@ bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease)
 			break;
 
 		case EBendHoloState::CDH_Bend_B2:
+			bComplete = true;
+			break;
+
+		// drawing mode goes from none, to painting, to confirm
+		case EBendHoloState::CDH_Draw_None:
+			eState = EBendHoloState::CDH_Draw_Live;
+			break;
+
+		case EBendHoloState::CDH_Draw_Live:
+			eState = EBendHoloState::CDH_Draw_Done;
+			break;
+
+		case EBendHoloState::CDH_Draw_Done:
 			bComplete = true;
 			break;
 	}
@@ -132,7 +159,7 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	if (eState == EBendHoloState::CDH_Placing) {
 		SetActorLocation(snappedHitLocation);
 		SetActorRotation(hitResult.ImpactNormal.ToOrientationRotator());
-		markerBall->SetRelativeLocation(FVector::ZeroVector);
+		markerPosition = FVector::ZeroVector;
 
 		UpdateAndReconstructSpline();
 
@@ -149,7 +176,6 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 		endPos = snappedHitLocation;
 		startTangent = snappedHitLocation * 0.99f; // If these are "exact" floating points can decide things are backwards
 		endTangent = snappedHitLocation * 0.99f; // If these are "exact" floating points can decide things are backwards
-		markerBall->SetRelativeLocation(snappedHitLocation);
 
 	} else {
 		if ((uint8)eState & (uint8)EBendHoloState::CDHM_BendIn) {
@@ -159,10 +185,9 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 		if ((uint8)eState & (uint8)EBendHoloState::CDHM_BendOut) {
 			endTangent = (endPos - snappedHitLocation) * 2.0f; // Overblow the movement so it's easier to make good curves
 		}
-
-		markerBall->SetRelativeLocation(snappedHitLocation * 2.0f);
 	}
 
+	markerPosition = snappedHitLocation;
 	UpdateAndReconstructSpline();
 
 	if (length < mGridSnapSize) {
@@ -173,41 +198,16 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	}
 }
 
-USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName, const FName& attachSocketName)
-{
-	// Lets keep track of our spline and set it up
-	USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(componentTemplate);
-	if (splineRefTemp != NULL) {
-		if(splineRefHolo != NULL){ splineRefHolo->UnregisterComponent(); }
-		splineRefHolo = DuplicateComponent<USplineMeshComponent>(attachParent, splineRefTemp, componentName);
-		splineRefBuild = splineRefTemp;
+bool AABCurvedDecorHologram::TrySnapToActor(const FHitResult& hitResult) {
+	return Super::TrySnapToActor(hitResult);
+}
 
-		splineRefHolo->SetupAttachment(attachParent);
-		splineRefHolo->SetCollisionProfileName(CollisionProfileHologram);
-		splineRefHolo->SetSimulatePhysics(false);
-		splineRefHolo->SetCastShadow(false);
-		splineRefHolo->ComponentTags.Add(HOLOGRAM_MESH_TAG);
-		splineRefHolo->RegisterComponent();
+void AABCurvedDecorHologram::ConfigureActor(class AFGBuildable* inBuildable) const {
+	Super::ConfigureActor(inBuildable);
+}
 
-		splineRefHolo->SetBoundaryMin(0.0f, false);
-		splineRefHolo->SetBoundaryMax(400.0f, false);
-
-		UpdateAndReconstructSpline();
-
-		UFGBlueprintFunctionLibrary::ShowOutline(splineRefHolo, EOutlineColor::OC_HOLOGRAM);
-		UFGBlueprintFunctionLibrary::ApplyCustomizationPrimitiveData(this, mCustomizationData, this->mCustomizationData.ColorSlot, splineRefHolo);
-
-		return splineRefHolo;
-	}
-
-	// Behave like normal
-	USceneComponent* result = Super::SetupComponent(attachParent, componentTemplate, componentName, attachSocketName);
-
-	// There's only 1 other static mesh, so lets use it for the marker //TODO: this is wrong but I'm lazy and it's ?working?
-	UMeshComponent* markerTemp = Cast<UMeshComponent>(result);
-	if (markerTemp != NULL) { markerBall = markerTemp; }
-
-	return result;
+void AABCurvedDecorHologram::ConfigureComponents(class AFGBuildable* inBuildable) const {
+	Super::ConfigureComponents(inBuildable);
 }
 
 // Custom:
@@ -245,6 +245,4 @@ void AABCurvedDecorHologram::ResetLineData()
 	endTangent = defaultSplineLoc *0.99f;
 
 	eState = EBendHoloState::CDH_Placing;
-
-	if (markerBall) { markerBall->SetRelativeLocation(FVector::ZeroVector); }
 }
