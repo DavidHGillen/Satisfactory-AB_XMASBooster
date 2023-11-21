@@ -6,8 +6,7 @@
 #include "FGConstructDisqualifier.h"
 #include "Net/UnrealNetwork.h"
 
-// Ctor
-//////////////////////////////////////////////////////
+// Ctor:
 AABCurvedDecorHologram::AABCurvedDecorHologram() {
 	mCanLockHologram = true;
 	mCanNudgeHologram = true;
@@ -20,6 +19,7 @@ AABCurvedDecorHologram::AABCurvedDecorHologram() {
 	ResetLineData();
 }
 
+// Factory API:
 void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AABCurvedDecorHologram, endPos);
@@ -27,8 +27,7 @@ void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(AABCurvedDecorHologram, endTangent);
 }
 
-void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGBuildGunModeDescriptor>>& out_buildmodes) const
-{
+void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGBuildGunModeDescriptor>>& out_buildmodes) const {
 	Super::GetSupportedBuildModes_Implementation(out_buildmodes);
 
 	if (mBuildModeCurved) { out_buildmodes.AddUnique(mBuildModeCurved); }
@@ -36,58 +35,65 @@ void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubcl
 	if (mBuildModeDrawing) { out_buildmodes.AddUnique(mBuildModeDrawing); }
 }
 
-bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const
-{
+bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const {
 	// all buildables are valid targets, but we also need to check for valid natural targets. We can let vanilla do that step.
 	if (Cast<AFGBuildable>(hitResult.GetActor()) != NULL) { return true; }
 	return Super::IsValidHitResult(hitResult);
 }
 
-int32 AABCurvedDecorHologram::GetBaseCostMultiplier() const
-{
+int32 AABCurvedDecorHologram::GetBaseCostMultiplier() const {
 	return FMath::RoundHalfFromZero(length / lengthPerCost);
 }
 
-void AABCurvedDecorHologram::OnBuildModeChanged(TSubclassOf<UFGHologramBuildModeDescriptor> buildMode)
-{
+void AABCurvedDecorHologram::OnBuildModeChanged(TSubclassOf<UFGHologramBuildModeDescriptor> buildMode) {
 	Super::OnBuildModeChanged(buildMode);
 
-	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
-	eState = EBendHoloState::CDH_Placing;
+	// if we're in drawing mode we need the unique start state
+	if(IsCurrentBuildMode(mBuildModeDrawing)) {
+		eState = EBendHoloState::CDH_Draw_None;
+	} else {
+		//TODO: deal with the fact more complexity shouldn't reset the line
+		eState = EBendHoloState::CDH_Placing;
+		isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
+	}
 
 	ResetLineData();
-	UpdateAndReconstructSpline();
+	UpdateAndRecalcSpline();
 }
 
-bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease)
-{
+bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease) {
 	bool bComplete = false;
 
 	switch (eState) {
-		// precise modes each add another step after the last, from straight to defining one or two curved points
+		// all precise modes start here and progress to zooping
 		case EBendHoloState::CDH_Placing:
 			eState = EBendHoloState::CDH_Zooping;
+			bShowMarker = false; // zooping doesn't need the marker as it's obvious
 			break;
 
+		// once zooping is done where we go next depends on the build mode
 		case EBendHoloState::CDH_Zooping:
 			if (IsCurrentBuildMode(mBuildModeCurved)) {
-				eState = EBendHoloState::CDH_Bend_A1;
+				eState = EBendHoloState::CDH_BendBoth;
 			} else if(IsCurrentBuildMode(mBuildModeCompoundCurve)) {
-				eState = EBendHoloState::CDH_Bend_B1;
+				eState = EBendHoloState::CDH_Bend_IN;
 			} else {
 				bComplete = true;
 			}
+			bShowMarker = true;
 			break;
 
-		case EBendHoloState::CDH_Bend_A1:
+		// if we were bending both in and out we're done
+		case EBendHoloState::CDH_BendBoth:
 			bComplete = true;
 			break;
 
-		case EBendHoloState::CDH_Bend_B1:
-			eState = EBendHoloState::CDH_Bend_B2;
+		// step from in to out to done
+		case EBendHoloState::CDH_Bend_IN:
+			eState = EBendHoloState::CDH_Bend_OUT;
 			break;
 
-		case EBendHoloState::CDH_Bend_B2:
+		case EBendHoloState::CDH_Bend_OUT:
 			bComplete = true;
 			break;
 
@@ -98,34 +104,92 @@ bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease)
 
 		case EBendHoloState::CDH_Draw_Live:
 			eState = EBendHoloState::CDH_Draw_Done;
+			bShowMarker = false;
 			break;
 
 		case EBendHoloState::CDH_Draw_Done:
 			bComplete = true;
+			bShowMarker = true;
 			break;
 	}
 
 	return bComplete;
 }
 
-void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hitResult)
-{
+void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hitResult) {
 	AActor* hitActor = hitResult.GetActor();
 	FTransform hitToWorld = hitActor != NULL ? hitActor->ActorToWorld() : FTransform::Identity;
+	
+	//
+	// No, break out the snapping and run it before these two sets and then maybe we wont even need both of these?
+	//
+	if(IsCurrentBuildMode(mBuildModeDrawing)) {
+		lastHit = LocationAndRotation_Drawn(hitResult, hitActor, hitToWorld);
+	} else {
+		lastHit = LocationAndRotation_Precise(hitResult, hitActor, hitToWorld);
+	}
+
+	markerPosition = lastHit;
+	UpdateAndRecalcSpline();
+}
+
+void AABCurvedDecorHologram::ConfigureComponents(class AFGBuildable* inBuildable) const {
+	Super::ConfigureComponents(inBuildable);
+
+	// were there to be multiple spline mesh components this might be unwise, but like when will that come up
+	USplineMeshComponent* splineMesh = inBuildable->GetComponentByClass<USplineMeshComponent>();
+	splineMesh->SetEndPosition(endPos, false);
+	splineMesh->SetStartTangent(startTangent, false);
+	splineMesh->SetEndTangent(endTangent, true);
+}
+
+USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName, const FName& attachSocketName) {
+	// We can't live modify the spline component for some reason, so remake it constantly with the right FX
+	USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(componentTemplate);
+	if (splineRefTemp != NULL) {
+		if(splineRefHolo != NULL){ splineRefHolo->UnregisterComponent(); }
+		splineRefHolo = DuplicateComponent<USplineMeshComponent>(attachParent, splineRefTemp, componentName);
+
+		splineRefHolo->SetupAttachment(attachParent);
+		splineRefHolo->SetCollisionProfileName(CollisionProfileHologram);
+		splineRefHolo->SetSimulatePhysics(false);
+		splineRefHolo->SetCastShadow(false);
+		splineRefHolo->ComponentTags.Add(HOLOGRAM_MESH_TAG);
+		splineRefHolo->RegisterComponent();
+
+		UpdateAndRecalcSpline();
+
+		UFGBlueprintFunctionLibrary::ShowOutline(splineRefHolo, EOutlineColor::OC_HOLOGRAM);
+		UFGBlueprintFunctionLibrary::ApplyCustomizationPrimitiveData(this, mCustomizationData, this->mCustomizationData.ColorSlot, splineRefHolo);
+
+		return splineRefHolo;
+	}
+
+	// Behave like normal
+	USceneComponent* result = Super::SetupComponent(attachParent, componentTemplate, componentName, attachSocketName);
+
+	return result;
+}
+
+// Custom:
+FVector AABCurvedDecorHologram::LocationAndRotation_Precise(const FHitResult& hitResult, const AActor* hitActor, const FTransform& hitToWorld) {
 	FVector snappedHitLocation;
 
 	if (hitActor == NULL) {
+		// we hit nothing, now what?
 		if (eState == EBendHoloState::CDH_Placing) {
-			// stay where you were cause where the hell else would you go
+			// stay where you were last cause where the hell else would you go
 			snappedHitLocation = lastHit;
 			AddConstructDisqualifier(UFGCDInvalidAimLocation::StaticClass());
-		} else {
-			// cast the point out into space along the look vector
+		}
+		else {
+			// cast the point out into space along the look vector for maximum length style a-la beams
 			APawn* player = GetConstructionInstigator();
-			FVector farSight = FVector(eState == EBendHoloState::CDH_Zooping ? maxLength : maxBend, 0.0f, 0.0f);
+			FVector farSight = FVector(maxLength, 0.0f, 0.0f);
 			snappedHitLocation = player->GetActorLocation() + player->GetControlRotation().Vector() * farSight;
 		}
 	} else {
+		//TODO: better snapping to more specific object types (walls, sloped foundations, spline meshes)
 		if (Cast<AFGBuildable>(hitActor) != NULL) {
 			// world location when snaped in local space on factory objects
 			FVector scaledSnap = FVector(mGridSnapSize) / hitActor->GetActorScale();
@@ -136,91 +200,61 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 				FMath::GridSnap(snappedHitLocation.Z, scaledSnap.Z)
 			));
 		} else {
-			// world location of the thing whatever it is
+			// if we don't have a smart way to snap, lets just use the raw position
 			snappedHitLocation = hitResult.ImpactPoint;
 		}
 
+		// once we're past placing the object work in local space
 		if (eState != EBendHoloState::CDH_Placing) {
-			// reproject from world into local co-ordinates
 			snappedHitLocation = ActorToWorld().InverseTransformPosition(snappedHitLocation);
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[[[ %s ]]]"), *snappedHitLocation.ToString());
-
 	// if our snap hasn't moved nothing needs changing
-	FVector test = lastHit;
-	lastHit = snappedHitLocation;
-	if (snappedHitLocation.Equals(test)) {
-		return;
+	if (snappedHitLocation.Equals(lastHit)) {
+		return lastHit;
 	}
 
-	// just move the object
+	UE_LOG(LogTemp, Warning, TEXT("[[[ Update: %s ]]]"), *snappedHitLocation.ToString());
+
+	// move the building to our location
 	if (eState == EBendHoloState::CDH_Placing) {
 		SetActorLocation(snappedHitLocation);
 		SetActorRotation(hitResult.ImpactNormal.ToOrientationRotator());
 		markerPosition = FVector::ZeroVector;
-
-		UpdateAndReconstructSpline();
-
-		return;
-	}
-
-	// length = in tangent = out tanget >>>> evenly distributed straight spline
-	if (eState == EBendHoloState::CDH_Zooping) {
-		// point the buildable along the line and redo setup //TODO: optimize
-		snappedHitLocation = ActorToWorld().TransformPosition(snappedHitLocation);
-		SetActorRotation((snappedHitLocation - GetActorLocation()).ToOrientationRotator());
-		snappedHitLocation = ActorToWorld().InverseTransformPosition(snappedHitLocation);
-
-		endPos = snappedHitLocation;
-		startTangent = snappedHitLocation * 0.99f; // If these are "exact" floating points can decide things are backwards
-		endTangent = snappedHitLocation * 0.99f; // If these are "exact" floating points can decide things are backwards
-
 	} else {
-		if ((uint8)eState & (uint8)EBendHoloState::CDHM_BendIn) {
-			startTangent = snappedHitLocation * 2.0f; // Overblow the movement so it's easier to make good curves
+
+		// modify the building
+		if (eState == EBendHoloState::CDH_Zooping) {
+			// point the buildable along the line
+			snappedHitLocation = ActorToWorld().TransformPosition(snappedHitLocation);
+			SetActorRotation((snappedHitLocation - GetActorLocation()).ToOrientationRotator());
+			snappedHitLocation = ActorToWorld().InverseTransformPosition(snappedHitLocation);
+
+			endPos = snappedHitLocation;
+			startTangent = snappedHitLocation * 0.99f; // If these are "exact" floating points can decide things are backwards
+			endTangent = snappedHitLocation * 0.99f; // If these are "exact" floating points can decide things are backwards
+		} else {
+			if ((uint8)eState & (uint8)EBendHoloState::CDHM_isBendingIn) {
+				startTangent = snappedHitLocation * 2.0f; // Overblow the movement so it's easier to make good curves
+			}
+
+			if ((uint8)eState & (uint8)EBendHoloState::CDHM_isBendingOut) {
+				endTangent = (endPos - snappedHitLocation) * 2.0f; // Overblow the movement so it's easier to make good curves
+			}
 		}
-
-		if ((uint8)eState & (uint8)EBendHoloState::CDHM_BendOut) {
-			endTangent = (endPos - snappedHitLocation) * 2.0f; // Overblow the movement so it's easier to make good curves
-		}
 	}
 
-	markerPosition = snappedHitLocation;
-	UpdateAndReconstructSpline();
-
-	if (length < mGridSnapSize) {
-		AddConstructDisqualifier(UFGCDInvalidAimLocation::StaticClass());
-	}
-	if (snappedHitLocation.Size() > maxBend * 1.01f) {
-		AddConstructDisqualifier(UFGCDInvalidAimLocation::StaticClass());
-	}
+	return snappedHitLocation;
 }
 
-bool AABCurvedDecorHologram::TrySnapToActor(const FHitResult& hitResult) {
-	return Super::TrySnapToActor(hitResult);
+FVector AABCurvedDecorHologram::LocationAndRotation_Drawn(const FHitResult& hitResult, const AActor* hitActor, const FTransform& hitToWorld) {
+	//TODO: DO
+	return hitResult.ImpactPoint;
 }
 
-void AABCurvedDecorHologram::ConfigureActor(class AFGBuildable* inBuildable) const {
-	Super::ConfigureActor(inBuildable);
-}
-
-void AABCurvedDecorHologram::ConfigureComponents(class AFGBuildable* inBuildable) const {
-	Super::ConfigureComponents(inBuildable);
-}
-
-// Custom:
-//////////////////////////////////////////////////////
-void AABCurvedDecorHologram::UpdateAndReconstructSpline()
-{
+void AABCurvedDecorHologram::UpdateAndRecalcSpline() {
 	UE_LOG(LogTemp, Warning, TEXT("[[[ %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
-	
-	if (eState == EBendHoloState::CDH_Placing) {
-		length = lengthPerCost; // cost minimum until people draw a line
-	} else {
-		length = endPos.Size(); //TODO: curving should cost something but is expensive to calc
-	}
 
 	// actually set data
 	if (splineRefHolo != NULL) {
@@ -228,21 +262,54 @@ void AABCurvedDecorHologram::UpdateAndReconstructSpline()
 		splineRefHolo->SetStartTangent(startTangent, false);
 		splineRefHolo->SetEndTangent(endTangent, true);
 	}
-	if (splineRefBuild != NULL) {
-		splineRefBuild->SetEndPosition(endPos, false);
-		splineRefBuild->SetStartTangent(startTangent, false);
-		splineRefBuild->SetEndTangent(endTangent, true);
+	
+	if (eState == EBendHoloState::CDH_Placing || eState == EBendHoloState::CDH_Draw_None) {
+		length = lengthPerCost; // cost minimum until people draw a line
+	} else {
+		length = calculateMeshLength(FVector::Zero(), endPos, startTangent, endTangent);
+
+		if (length > maxLength) { AddConstructDisqualifier(UFGCDInvalidPlacement::StaticClass()); }
+		if (length < minLength) { AddConstructDisqualifier(UFGCDInvalidPlacement::StaticClass()); }
+
+		UE_LOG(LogTemp, Warning, TEXT("[[[ Length %f ]]]"), length);
 	}
 
 	SetIsChanged(true);
 }
 
-void AABCurvedDecorHologram::ResetLineData()
-{
+void AABCurvedDecorHologram::ResetLineData() {
 	FVector defaultSplineLoc = FVector(0.0f, 0.0f, 400.0f);
 	startTangent = defaultSplineLoc;
 	endPos = defaultSplineLoc * 0.99f;
 	endTangent = defaultSplineLoc *0.99f;
+	localPointStore.Empty();
+	bShowMarker = true;
+	length = lengthPerCost;
+}
 
-	eState = EBendHoloState::CDH_Placing;
+// Static:
+float AABCurvedDecorHologram::calculateMeshLength(FVector start, FVector end, FVector startTangent, FVector endTangent) {
+	/**** Borrowed and trimmed from SplineComponenet.cpp ****/
+	struct FLegendreGaussCoefficient { float Abscissa; float Weight; };
+	static const FLegendreGaussCoefficient LegendreGaussCoefficients[] = {
+		{ 0.0f, 0.5688889f },
+		{ -0.5384693f, 0.47862867f },
+		{ 0.5384693f, 0.47862867f },
+		{ -0.90617985f, 0.23692688f },
+		{ 0.90617985f, 0.23692688f }
+	};
+
+	// Cache the coefficients to be fed into the function to calculate the spline derivative at each sample point as they are constant.
+	const FVector c1 = ((start - end) * 2.0f + startTangent + endTangent) * 3.0f;
+	const FVector c2 = (end - start) * 6.0f - startTangent * 4.0f - endTangent * 2.0f;
+
+	float calc = 0.0f;
+	for (const auto& LegendreGaussCoefficient : LegendreGaussCoefficients) {
+		// Calculate derivative at each Legendre-Gauss sample, and perform a weighted sum
+		const float alpha = 0.5f * (1.0f + LegendreGaussCoefficient.Abscissa);
+		const FVector derivative = ((c1 * alpha + c2) * alpha + startTangent);
+		calc += derivative.Size() * LegendreGaussCoefficient.Weight;
+	}
+	
+	return calc * 0.5f;
 }

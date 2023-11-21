@@ -13,20 +13,19 @@ enum class EBendHoloState : uint8
 {
 	CDH_Placing =  0b0000,
 	CDH_Zooping =  0b0001,
-	CDH_Bend_A1 =  0b0010,
-	CDH_Bend_B1 =  0b0100,
-	CDH_Bend_B2 =  0b1000,
+	CDH_BendBoth = 0b0010,
+	CDH_Bend_IN =  0b0100,
+	CDH_Bend_OUT = 0b1000,
 
-	CDHM_Bending = 0b1110,
-	CDHM_BendIn =  0b0111,
-	CDHM_BendOut = 0b1011,
+	CDHM_isBending =    0b1110,
+	CDHM_isBendingIn =  0b0111,
+	CDHM_isBendingOut = 0b1011,
 
 	CDH_Draw_None = 0b0001 << 4,
 	CDH_Draw_Live = 0b0010 << 4,
 	CDH_Draw_Done = 0b0011 << 4,
 
-	CDHM_Draw_Any = 0b0010 << 4,
-	CDHM_Draw_Some = 0b0010 << 4
+	CDHM_DrawingPresent = 0b0010 << 4
 };
 
 /**
@@ -48,17 +47,15 @@ public:
 
 	virtual bool DoMultiStepPlacement(bool isInputFromARelease) override;
 	virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
-	virtual bool TrySnapToActor(const FHitResult& hitResult) override;
 	
 protected:
-	//virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName, const FName& attachSocketName) override;
-	virtual void ConfigureActor(class AFGBuildable* inBuildable) const;
+	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName, const FName& attachSocketName) override;
 	virtual void ConfigureComponents(class AFGBuildable* inBuildable) const;
 
 	// Custom:
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
 		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeCurved;
-		
+
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
 		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeCompoundCurve;
 
@@ -66,10 +63,10 @@ protected:
 		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeDrawing;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|Spline")
-		float maxLength;
+		float minLength;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|Spline")
-		float maxBend;
+		float maxLength;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|Spline")
 		float lengthPerCost;
@@ -80,21 +77,31 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Hologram|Spline")
 		FVector markerPosition;
 
-	float length;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Hologram|Spline")
+		FVector endPos;
 
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Hologram|Spline")
+		FVector startTangent;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Hologram|Spline")
+		FVector endTangent;
+
+	float length;
 	FVector lastHit;
-	FVector endPos;
-	FVector startTangent;
-	FVector endTangent;
 
 	EBendHoloState eState;
 	bool isAnyCurvedBeamMode;
 
+	// the current spline mesh in the hologram
 	USplineMeshComponent* splineRefHolo = NULL;
-	USplineMeshComponent* splineRefBuild = NULL;
 
 	TArray<FVector> localPointStore;
 
-	void UpdateAndReconstructSpline();
+	FVector LocationAndRotation_Precise(const FHitResult& hitResult, const AActor* hitActor, const FTransform& hitToWorld);
+	FVector LocationAndRotation_Drawn(const FHitResult& hitResult, const AActor* hitActor, const FTransform& hitToWorld);
+
+	void UpdateAndRecalcSpline();
 	void ResetLineData();
+
+	static float calculateMeshLength(FVector start, FVector end, FVector startTangent, FVector endTangent);
 };
