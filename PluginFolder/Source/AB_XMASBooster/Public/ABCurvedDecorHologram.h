@@ -12,16 +12,15 @@ UENUM()
 enum class EBendHoloState : uint8
 {
 	CDH_Placing =  0b0000,
+
 	CDH_Zooping =  0b0001,
 	CDH_BendBoth = 0b0010,
 	CDH_Bend_IN =  0b0100,
 	CDH_Bend_OUT = 0b1000,
 
-	CDHM_isBending =    0b1110,
 	CDHM_isBendingIn =  0b0111,
 	CDHM_isBendingOut = 0b1011,
 
-	CDH_Draw_None = 0b0001 << 4,
 	CDH_Draw_Live = 0b0010 << 4,
 	CDH_Draw_Done = 0b0011 << 4,
 
@@ -51,6 +50,7 @@ public:
 protected:
 	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName, const FName& attachSocketName) override;
 	virtual void ConfigureComponents(class AFGBuildable* inBuildable) const;
+	//TODO: use pre-configure to center building around its spline
 
 	// Custom:
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
@@ -64,25 +64,23 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|Spline")
 		float minLength;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|Spline")
 		float maxLength;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|Spline")
 		float lengthPerCost;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Hologram|Spline")
+		float drawResolution;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Hologram|Spline")
 		bool bShowMarker;
-
 	UPROPERTY(BlueprintReadOnly, Category = "Hologram|Spline")
 		FVector markerPosition;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Hologram|Spline")
 		FVector endPos;
-
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Hologram|Spline")
 		FVector startTangent;
-
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Hologram|Spline")
 		FVector endTangent;
 
@@ -92,14 +90,11 @@ protected:
 	EBendHoloState eState;
 	bool isAnyCurvedBeamMode;
 
-	// the current spline mesh in the hologram
-	USplineMeshComponent* splineRefHolo = NULL;
+	USplineMeshComponent* splineRefHolo = NULL; // the current temp spline mesh in the hologram
 
 	TArray<FVector> localPointStore;
 
-	FVector LocationAndRotation_Precise(const FHitResult& hitResult, const AActor* hitActor, const FTransform& hitToWorld);
-	FVector LocationAndRotation_Drawn(const FHitResult& hitResult, const AActor* hitActor, const FTransform& hitToWorld);
-
+	FVector FindSnappedHitLocation(const FHitResult& hitResult) const;
 	void UpdateAndRecalcSpline();
 	void ResetLineData();
 
