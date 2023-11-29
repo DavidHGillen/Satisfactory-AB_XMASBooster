@@ -18,8 +18,8 @@ enum class EBendHoloState : uint8
 	CDH_Bend_IN =  0b0100,
 	CDH_Bend_OUT = 0b1000,
 
-	CDHM_isBendingIn =  0b0111,
-	CDHM_isBendingOut = 0b1011,
+	CDHM_isBendingIn =  0b0110,
+	CDHM_isBendingOut = 0b1010,
 
 	CDH_Draw_Live = 0b0010 << 4,
 	CDH_Draw_Done = 0b0011 << 4,
@@ -88,7 +88,6 @@ protected:
 	FVector lastHit;
 
 	EBendHoloState eState;
-	bool isAnyCurvedBeamMode;
 
 	USplineMeshComponent* splineRefHolo = NULL; // the current temp spline mesh in the hologram
 

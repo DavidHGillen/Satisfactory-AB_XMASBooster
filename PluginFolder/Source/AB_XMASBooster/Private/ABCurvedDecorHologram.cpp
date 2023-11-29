@@ -13,7 +13,6 @@ AABCurvedDecorHologram::AABCurvedDecorHologram() {
 	mSnapToGuideLines = false;
 	mCanSnapWithAttachmentPoints = false;
 
-	isAnyCurvedBeamMode = false;
 	eState = EBendHoloState::CDH_Placing;
 
 	ResetLineData();
@@ -38,7 +37,7 @@ void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubcl
 bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const {
 	AActor* hitActor = hitResult.GetActor();
 
-	// all buildables are valid targets, but we also need to check for valid natural targets. We can let vanilla do that step but 
+	// all buildables are valid targets, but we also need to check for valid natural targets. We can let vanilla do that step
 	if (hitActor == NULL) {
 		// Null is fine when not placing it.
 		return eState != EBendHoloState::CDH_Placing;
@@ -58,10 +57,10 @@ void AABCurvedDecorHologram::OnBuildModeChanged(TSubclassOf<UFGHologramBuildMode
 
 	//TODO: deal with the fact more complexity than currently comitted shouldn't reset the line, remember there's a way to jump to a specific mode
 	eState = EBendHoloState::CDH_Placing;
-	isAnyCurvedBeamMode = IsCurrentBuildMode(mBuildModeCurved) || IsCurrentBuildMode(mBuildModeCompoundCurve);
 
 	ResetLineData();
 	UpdateAndRecalcSpline();
+	SetIsChanged(true);
 }
 
 bool AABCurvedDecorHologram::DoMultiStepPlacement(bool isInputFromARelease) {
@@ -131,40 +130,64 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	// if our snap hasn't moved nothing needs changing
 	if (snappedHitLocation.Equals(lastHit)) { return; }
 
+	UE_LOG(LogTemp, Warning, TEXT("[[[ update: %s ]]]"), *snappedHitLocation.ToString());
+
 	// drawing and precise behave differently
 	if (IsCurrentBuildMode(mBuildModeDrawing)) {
-		int32 lastIndex = localPointStore.Num();
-
 		if (eState == EBendHoloState::CDH_Draw_Live && FVector::Distance(snappedHitLocation, localPointStore.Last()) > drawResolution) {
+			int32 lastIndex = localPointStore.Num();
 			localPointStore.Add(snappedHitLocation);
 
-			if (lastIndex > 3) {
-				endPos = snappedHitLocation;
-				startTangent = endTangent = FVector::Zero();
+			for (int i = 0; i < localPointStore.Num(); i++) {
+				UE_LOG(LogTemp, Warning, TEXT("[[[ local: %s"), *localPointStore[i].ToString());
+			}
 
-				FVector inKick, outKick;
-				inKick = localPointStore[1];            //TODO: weighted average a collection of points near the start
-				outKick = localPointStore[lastIndex-1]; //TODO: weighted average a collection of points near the end
+			if (lastIndex > 3) {
+				endPos = localPointStore.Last();
+				startTangent = FVector::Zero();
+				endTangent = FVector::Zero();
+				FVector inKick = FVector::Zero();
+				FVector outKick = FVector::Zero();
+				int kickContributors = FMath::Max<int>((lastIndex + 1.0f) * 0.15f, 1);
+
+				UE_LOG(LogTemp, Warning, TEXT("[[[   in kick: %s"), *inKick.ToString());
+				UE_LOG(LogTemp, Warning, TEXT("[[[   outKick: %s"), *outKick.ToString());
 
 				// accumulate weighted attributes in respective tangents
-				for (int i = 1; i < lastIndex; i++) {
-					float ratio = i / lastIndex;
-					startTangent = startTangent + ((1.0f - ratio) * 2.0f) * localPointStore[i];
-					endTangent = endTangent + (ratio * 2.0f) * localPointStore[i] - endPos;
+				for (int i = 1; i <= lastIndex; i++) {
+					float ratio = (float)i / ((float)lastIndex + 1.0f);
+					UE_LOG(LogTemp, Warning, TEXT("[[[   ratio: %f"), ratio);
+					startTangent += ((1.0f - ratio) * 8.0f) * localPointStore[i];
+					UE_LOG(LogTemp, Warning, TEXT("[[[[[[   stTangent: %s"), *startTangent.ToString());
+					endTangent += (ratio * 8.0f) * (localPointStore[i] - endPos);
+					UE_LOG(LogTemp, Warning, TEXT("[[[[[[   enTangent: %s"), *endTangent.ToString());
+
+					if (i <= kickContributors) {            inKick += localPointStore[i]; }
+					if (i > lastIndex-kickContributors) { outKick += localPointStore[i] - endPos; }
 				}
 
 				// hacktastic aproximation incoming
 				// accumlated weights bend inwards too much, by pushing them back out we get a more accurate shape while skipping heavy math
 				FVector temp, cross;
 
+				inKick /= (float)kickContributors;
+				outKick /= (float)kickContributors;
+
 				temp = inKick;
 				cross = endPos.Cross(temp);
-				startTangent = startTangent.RotateAngleAxis(cross.Length() / (endPos.Length() * temp.Length()), cross);
+				startTangent = startTangent.RotateAngleAxis(
+					FMath::RadiansToDegrees(cross.Length() / (endPos.Length() * temp.Length())),
+					cross / cross.Length()
+				) / (float)lastIndex;
 
 				temp = outKick - endPos;
 				cross = (-endPos).Cross(temp);
-				endTangent = endTangent.RotateAngleAxis(cross.Length() / (endPos.Length() * temp.Length()), cross);
+				endTangent = endTangent.RotateAngleAxis(
+					FMath::RadiansToDegrees(cross.Length() / (endPos.Length() * temp.Length())),
+					cross / cross.Length()
+				) / (float)lastIndex;
 
+				startTangent += FVector(0.01f);
 				endTangent = endTangent * -1.0f; // end tangents are backwards
 
 				bShowMarker = false;
@@ -182,13 +205,11 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 		// different modes change which points get affected
 		if (eState == EBendHoloState::CDH_Zooping) {
 			// point the buildable along the line
-			snappedHitLocation = ActorToWorld().TransformPosition(snappedHitLocation);
-			SetActorRotation((snappedHitLocation - GetActorLocation()).ToOrientationRotator());
-			snappedHitLocation = ActorToWorld().InverseTransformPosition(snappedHitLocation);
+			SetActorRotation((ActorToWorld().TransformPosition(snappedHitLocation) - GetActorLocation()).ToOrientationRotator());
 
 			endPos = snappedHitLocation;
-			startTangent = snappedHitLocation + FVector(0.001f); // If these are "exact" floating points can decide things are backwards
-			endTangent = snappedHitLocation - FVector(0.001f); // If these are "exact" floating points can decide things are backwards
+			startTangent = snappedHitLocation + FVector(0.001f); // If these are "exact" floating points can decide things are twisty
+			endTangent = snappedHitLocation - FVector(0.001f); // If these are "exact" floating points can decide things are twisty
 
 			bShowMarker = false;
 		} else {
@@ -209,6 +230,7 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	lastHit = snappedHitLocation;
 
 	UpdateAndRecalcSpline();
+	SetIsChanged(true);
 }
 
 void AABCurvedDecorHologram::ConfigureComponents(class AFGBuildable* inBuildable) const {
@@ -217,7 +239,7 @@ void AABCurvedDecorHologram::ConfigureComponents(class AFGBuildable* inBuildable
 	// were there to be multiple spline mesh components this might be unwise, but like when will that come up
 	USplineMeshComponent* splineMesh = inBuildable->GetComponentByClass<USplineMeshComponent>();
 	splineMesh->SetEndPosition(endPos, false);
-	splineMesh->SetStartTangent(startTangent, false);
+	splineMesh->SetStartTangent(startTangent, false); 
 	splineMesh->SetEndTangent(endTangent, true);
 }
 
@@ -283,7 +305,7 @@ FVector AABCurvedDecorHologram::FindSnappedHitLocation(const FHitResult& hitResu
 		snappedHitLocation = ActorToWorld().InverseTransformPosition(snappedHitLocation);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[[[ snap: %s ]]]"), *snappedHitLocation.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("[[[ snap: %s ]]]"), *snappedHitLocation.ToString());
 
 	return snappedHitLocation;
 }
@@ -294,7 +316,7 @@ void AABCurvedDecorHologram::UpdateAndRecalcSpline() {
 	// actually set data
 	if (splineRefHolo != NULL) {
 		splineRefHolo->SetEndPosition(endPos, false);
-		splineRefHolo->SetStartTangent(startTangent, false);
+		splineRefHolo->SetStartTangent(startTangent, true); //avoids error case with compound curve updates
 		splineRefHolo->SetEndTangent(endTangent, true);
 	}
 	
@@ -307,8 +329,6 @@ void AABCurvedDecorHologram::UpdateAndRecalcSpline() {
 
 		UE_LOG(LogTemp, Warning, TEXT("[[[ Length %f ]]]"), length);
 	}
-
-	SetIsChanged(true);
 }
 
 void AABCurvedDecorHologram::ResetLineData() {
