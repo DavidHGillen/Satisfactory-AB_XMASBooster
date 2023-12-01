@@ -49,6 +49,7 @@ public:
 	
 protected:
 	virtual USceneComponent* SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName, const FName& attachSocketName) override;
+	virtual void ConfigureActor(class AFGBuildable* inBuildable) const;
 	virtual void ConfigureComponents(class AFGBuildable* inBuildable) const;
 	//TODO: use pre-configure to center building around its spline
 

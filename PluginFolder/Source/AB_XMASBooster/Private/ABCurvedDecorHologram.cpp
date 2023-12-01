@@ -2,6 +2,8 @@
 
 #include "ABCurvedDecorHologram.h"
 
+#include "ABCurvedDecorBuildable.h"
+
 #include "Math/UnrealMathUtility.h"
 #include "FGConstructDisqualifier.h"
 #include "Net/UnrealNetwork.h"
@@ -233,6 +235,19 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 	SetIsChanged(true);
 }
 
+void AABCurvedDecorHologram::ConfigureActor(class AFGBuildable* inBuildable) const {
+	Super::ConfigureActor(inBuildable);
+
+	AABCurvedDecorBuildable* curvedDecor = Cast<AABCurvedDecorBuildable>(inBuildable);
+	if (curvedDecor != NULL) {
+		curvedDecor->SplineLength = length;
+		curvedDecor->StartPosition = FVector::Zero();
+		curvedDecor->EndPosition = endPos;
+		curvedDecor->StartTangent = startTangent;
+		curvedDecor->EndTangent = endTangent;
+	}
+}
+
 void AABCurvedDecorHologram::ConfigureComponents(class AFGBuildable* inBuildable) const {
 	Super::ConfigureComponents(inBuildable);
 
@@ -316,8 +331,9 @@ void AABCurvedDecorHologram::UpdateAndRecalcSpline() {
 	// actually set data
 	if (splineRefHolo != NULL) {
 		splineRefHolo->SetEndPosition(endPos, false);
-		splineRefHolo->SetStartTangent(startTangent, true); //avoids error case with compound curve updates
-		splineRefHolo->SetEndTangent(endTangent, true);
+		splineRefHolo->SetStartTangent(startTangent, false);
+		splineRefHolo->SetEndTangent(endTangent, false);
+		splineRefHolo->UpdateMesh();
 	}
 	
 	if (eState == EBendHoloState::CDH_Placing) {
