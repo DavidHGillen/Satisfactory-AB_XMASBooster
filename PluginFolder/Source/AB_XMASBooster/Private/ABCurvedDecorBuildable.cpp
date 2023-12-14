@@ -19,11 +19,12 @@ void AABCurvedDecorBuildable::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 void AABCurvedDecorBuildable::UpdateSplineMesh() {
 	// were there to be multiple spline mesh components this might be unwise
 	USplineMeshComponent* splineMesh = GetComponentByClass<USplineMeshComponent>();
-	splineMesh->SetSplineUpDir(FVector::UnitZ());
 	splineMesh->SetStartPosition(StartPosition, false);
 	splineMesh->SetEndPosition(EndPosition, false);
 	splineMesh->SetStartTangent(StartTangent, false);
 	splineMesh->SetEndTangent(EndTangent, false);
-	splineMesh->UpdateMesh();
+	splineMesh->SetStartRoll(0.001f, false);
+	splineMesh->SetEndRoll(0.001f, false);
+	splineMesh->UpdateMesh_Concurrent();
 	splineMesh->UpdateBounds();
 }

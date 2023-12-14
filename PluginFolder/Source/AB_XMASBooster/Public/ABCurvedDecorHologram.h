@@ -38,12 +38,15 @@ class AB_XMASBOOSTER_API AABCurvedDecorHologram : public AFGBuildableHologram
 public:
 	AABCurvedDecorHologram();
 
+	// AActor:
+	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+
+	// FactoryGame:
 	virtual void GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGBuildGunModeDescriptor>>& out_buildmodes) const override;
 	virtual bool IsValidHitResult(const FHitResult& hitResult) const override;
 	virtual int32 GetBaseCostMultiplier() const;
 	virtual void OnBuildModeChanged(TSubclassOf<UFGHologramBuildModeDescriptor> buildMode) override;
-
 	virtual bool DoMultiStepPlacement(bool isInputFromARelease) override;
 	virtual void SetHologramLocationAndRotation(const FHitResult& hitResult) override;
 	
@@ -85,18 +88,17 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Hologram|Spline")
 		FVector endTangent;
 
-	float length;
-	FVector lastHit;
-
-	EBendHoloState eState;
-
+	float length;                               // cached length
+	FVector lastHit;                            // where we responded to last, mostly for optimization
+	EBendHoloState eState;                      // current progress through the build mode
 	USplineMeshComponent* splineRefHolo = NULL; // the current temp spline mesh in the hologram
-
-	TArray<FVector> localPointStore;
+	TArray<FVector> localPointStore;            // draw build mode raw data
 
 	FVector FindSnappedHitLocation(const FHitResult& hitResult) const;
 	void UpdateAndRecalcSpline();
 	void ResetLineData();
 
+	// Static:
 	static float calculateMeshLength(FVector start, FVector end, FVector startTangent, FVector endTangent);
+	static FVector nearestSplinePoint(USplineMeshComponent* spline, const FVector& test, int steps = 12, float resolution = 0.3f);
 };

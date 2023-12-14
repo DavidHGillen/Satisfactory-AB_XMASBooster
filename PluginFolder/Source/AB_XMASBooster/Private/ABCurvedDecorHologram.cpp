@@ -20,7 +20,31 @@ AABCurvedDecorHologram::AABCurvedDecorHologram() {
 	ResetLineData();
 }
 
-// Factory API:
+// AActor:
+void AABCurvedDecorHologram::BeginPlay() {
+	Super::BeginPlay();
+
+	TArray<AActor*> subActors;
+	AABCurvedDecorBuildable* curvedDecor;
+
+	GetAllChildActors(subActors);
+
+	for (int i = 0; i < subActors.Num(); i++) {
+		AActor* testActor = subActors[i];
+		curvedDecor = Cast<AABCurvedDecorBuildable>(testActor);
+		if (curvedDecor != NULL) {
+			length = curvedDecor->SplineLength;
+			endPos = curvedDecor->EndPosition;
+			startTangent = curvedDecor->StartTangent;
+			endTangent = curvedDecor->EndTangent;
+
+			break;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[[[ [[READIT]] %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
+}
+
 void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AABCurvedDecorHologram, endPos);
@@ -28,6 +52,8 @@ void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(AABCurvedDecorHologram, endTangent);
 }
 
+
+// FactoryGame:
 void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGBuildGunModeDescriptor>>& out_buildmodes) const {
 	Super::GetSupportedBuildModes_Implementation(out_buildmodes);
 
@@ -43,7 +69,9 @@ bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const
 	if (hitActor == NULL) {
 		// Null is fine when not placing it.
 		return eState != EBendHoloState::CDH_Placing;
-	} else if (Cast<AFGBuildable>(hitActor) != NULL) {
+	}
+	
+	if (Cast<AFGBuildable>(hitActor) != NULL) {
 		return true;
 	}
 
@@ -255,14 +283,19 @@ void AABCurvedDecorHologram::ConfigureComponents(class AFGBuildable* inBuildable
 	USplineMeshComponent* splineMesh = inBuildable->GetComponentByClass<USplineMeshComponent>();
 	splineMesh->SetEndPosition(endPos, false);
 	splineMesh->SetStartTangent(startTangent, false); 
-	splineMesh->SetEndTangent(endTangent, true);
+	splineMesh->SetEndTangent(endTangent, false);
+	splineMesh->SetStartRoll(0.001f, false);
+	splineMesh->SetEndRoll(0.001f, false);
+	splineMesh->UpdateMesh();
 }
 
 USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachParent, UActorComponent* componentTemplate, const FName& componentName, const FName& attachSocketName) {
 	// We can't live modify the spline component for some reason, so remake it constantly with the right FX
 	USplineMeshComponent* splineRefTemp = Cast<USplineMeshComponent>(componentTemplate);
 	if (splineRefTemp != NULL) {
-		if(splineRefHolo != NULL){ splineRefHolo->UnregisterComponent(); }
+		if(splineRefHolo != NULL){
+			splineRefHolo->UnregisterComponent();
+		}
 		splineRefHolo = DuplicateComponent<USplineMeshComponent>(attachParent, splineRefTemp, componentName);
 
 		splineRefHolo->SetupAttachment(attachParent);
@@ -301,7 +334,11 @@ FVector AABCurvedDecorHologram::FindSnappedHitLocation(const FHitResult& hitResu
 	FVector snappedHitLocation = FVector::Zero();
 
 	//TODO: better snapping to more specific object types (walls, sloped foundations, spline meshes)
-	if (Cast<AFGBuildable>(hitActor) != NULL) {
+	/*if (Cast<AABCurvedDecorBuildable>(hitActor) != NULL) {
+		USplineMeshComponent* hitSplineMesh = hitActor->GetComponentByClass<USplineMeshComponent>();
+		hitSplineMesh->FindDistanceClosestToWorldLocation();
+
+	} else */if (Cast<AFGBuildable>(hitActor) != NULL) {
 		// world location when snaped in local space on factory objects
 		FVector scaledSnap = FVector(mGridSnapSize) / hitActor->GetActorScale();
 		snappedHitLocation = hitToWorld.InverseTransformPosition(hitResult.ImpactPoint);
@@ -333,6 +370,8 @@ void AABCurvedDecorHologram::UpdateAndRecalcSpline() {
 		splineRefHolo->SetEndPosition(endPos, false);
 		splineRefHolo->SetStartTangent(startTangent, false);
 		splineRefHolo->SetEndTangent(endTangent, false);
+		splineRefHolo->SetStartRoll(0.001f, false);
+		splineRefHolo->SetEndRoll(0.001f, false);
 		splineRefHolo->UpdateMesh();
 	}
 	
@@ -383,4 +422,38 @@ float AABCurvedDecorHologram::calculateMeshLength(FVector start, FVector end, FV
 	}
 	
 	return calc * 0.5f;
+}
+
+FVector AABCurvedDecorHologram::nearestSplinePoint(USplineMeshComponent* spline, const FVector& test, int steps, float resolution) {
+	float leftEdge = 0.0f;
+	float rightEdge = 1.0f;
+	FTransform leftT = spline->CalcSliceTransformAtSplineOffset(leftEdge);
+	FTransform rightT = spline->CalcSliceTransformAtSplineOffset(rightEdge);
+	FVector leftPoint = leftT.TransformPosition(FVector::Zero());
+	FVector rightPoint = rightT.TransformPosition(FVector::Zero());
+	float leftDist = FVector::DistSquared(test, leftPoint);
+	float rightDist = FVector::DistSquared(test, rightPoint);
+	FVector bestPoint;
+
+	for (int i = 0; i <= steps; i++) {
+		if (leftDist > rightDist) {
+			bestPoint = rightPoint;
+			if (i != steps) {
+				leftEdge += (rightEdge - leftEdge) * resolution;
+				leftT = spline->CalcSliceTransformAtSplineOffset(leftEdge);
+				leftPoint = leftT.TransformPosition(FVector::Zero());
+				leftDist = FVector::DistSquared(test, leftPoint);
+			}
+		} else {
+			bestPoint = leftPoint;
+			if (i != steps) {
+				rightEdge -= (rightEdge - leftEdge) * resolution;
+				rightT = spline->CalcSliceTransformAtSplineOffset(rightEdge);
+				rightPoint = rightT.TransformPosition(FVector::Zero());
+				rightDist = FVector::DistSquared(test, rightPoint);
+			}
+		}
+	}
+
+	return bestPoint;
 }
