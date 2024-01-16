@@ -16,6 +16,8 @@ class AB_XMASBOOSTER_API AABCurvedDecorBuildable : public AFGBuildable
 	GENERATED_BODY()
 
 public:
+	AABCurvedDecorBuildable();
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Replicated, SaveGame, Category = "CurvedDecor")

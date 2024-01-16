@@ -5,6 +5,10 @@
 #include "Math/UnrealMathUtility.h"
 #include "Net/UnrealNetwork.h"
 
+AABCurvedDecorBuildable::AABCurvedDecorBuildable() {
+	bReplicates = true;
+}
+
 void AABCurvedDecorBuildable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
@@ -27,4 +31,5 @@ void AABCurvedDecorBuildable::UpdateSplineMesh() {
 	splineMesh->SetEndRoll(0.001f, false);
 	splineMesh->UpdateMesh_Concurrent();
 	splineMesh->UpdateBounds();
+
 }
