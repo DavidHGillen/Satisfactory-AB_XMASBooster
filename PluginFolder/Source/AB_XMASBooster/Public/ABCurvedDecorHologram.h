@@ -58,13 +58,13 @@ protected:
 
 	// Custom:
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
-		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeCurved;
+		TSubclassOf<UFGHologramBuildModeDescriptor> mBuildModeCurved;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
-		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeCompoundCurve;
+		TSubclassOf<UFGHologramBuildModeDescriptor> mBuildModeCompoundCurve;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|BuildMode")
-		TSubclassOf< class UFGHologramBuildModeDescriptor > mBuildModeDrawing;
+		TSubclassOf<UFGHologramBuildModeDescriptor> mBuildModeDrawing;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hologram|Spline")
 		float minLength;

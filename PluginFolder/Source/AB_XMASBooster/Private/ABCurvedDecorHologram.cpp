@@ -1,7 +1,6 @@
 // Copyright David "Angry Beaver" Gillen, details listed on associated mods Readme
 
 #include "ABCurvedDecorHologram.h"
-
 #include "ABCurvedDecorBuildable.h"
 
 #include "Math/UnrealMathUtility.h"
@@ -42,7 +41,7 @@ void AABCurvedDecorHologram::BeginPlay() {
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[[[ [[READIT]] %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("[[[ [[READIT]] %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
 }
 
 void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
@@ -54,14 +53,6 @@ void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
 
 // FactoryGame:
-void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGBuildGunModeDescriptor>>& out_buildmodes) const {
-	Super::GetSupportedBuildModes_Implementation(out_buildmodes);
-
-	if (mBuildModeCurved) { out_buildmodes.AddUnique(mBuildModeCurved); }
-	if (mBuildModeCompoundCurve) { out_buildmodes.AddUnique(mBuildModeCompoundCurve); }
-	if (mBuildModeDrawing) { out_buildmodes.AddUnique(mBuildModeDrawing); }
-}
-
 bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const {
 	AActor* hitActor = hitResult.GetActor();
 
@@ -80,6 +71,14 @@ bool AABCurvedDecorHologram::IsValidHitResult(const FHitResult& hitResult) const
 
 int32 AABCurvedDecorHologram::GetBaseCostMultiplier() const {
 	return FMath::RoundHalfFromZero(length / lengthPerCost);
+}
+
+void AABCurvedDecorHologram::GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGBuildGunModeDescriptor>>& out_buildmodes) const {
+	Super::GetSupportedBuildModes_Implementation(out_buildmodes);
+
+	if (mBuildModeCurved) { out_buildmodes.AddUnique(mBuildModeCurved); }
+	if (mBuildModeCompoundCurve) { out_buildmodes.AddUnique(mBuildModeCompoundCurve); }
+	if (mBuildModeDrawing) { out_buildmodes.AddUnique(mBuildModeDrawing); }
 }
 
 void AABCurvedDecorHologram::OnBuildModeChanged(TSubclassOf<UFGHologramBuildModeDescriptor> buildMode) {
@@ -180,17 +179,17 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 				FVector outKick = FVector::Zero();
 				int kickContributors = FMath::Max<int>((lastIndex + 1.0f) * 0.15f, 1);
 
-				UE_LOG(LogTemp, Warning, TEXT("[[[   in kick: %s"), *inKick.ToString());
-				UE_LOG(LogTemp, Warning, TEXT("[[[   outKick: %s"), *outKick.ToString());
+				//UE_LOG(LogTemp, Warning, TEXT("[[[   in kick: %s"), *inKick.ToString());
+				//UE_LOG(LogTemp, Warning, TEXT("[[[   outKick: %s"), *outKick.ToString());
 
 				// accumulate weighted attributes in respective tangents
 				for (int i = 1; i <= lastIndex; i++) {
 					float ratio = (float)i / ((float)lastIndex + 1.0f);
-					UE_LOG(LogTemp, Warning, TEXT("[[[   ratio: %f"), ratio);
+					//UE_LOG(LogTemp, Warning, TEXT("[[[   ratio: %f"), ratio);
 					startTangent += ((1.0f - ratio) * 8.0f) * localPointStore[i];
-					UE_LOG(LogTemp, Warning, TEXT("[[[[[[   stTangent: %s"), *startTangent.ToString());
+					//UE_LOG(LogTemp, Warning, TEXT("[[[[[[   stTangent: %s"), *startTangent.ToString());
 					endTangent += (ratio * 8.0f) * (localPointStore[i] - endPos);
-					UE_LOG(LogTemp, Warning, TEXT("[[[[[[   enTangent: %s"), *endTangent.ToString());
+					//UE_LOG(LogTemp, Warning, TEXT("[[[[[[   enTangent: %s"), *endTangent.ToString());
 
 					if (i <= kickContributors) {            inKick += localPointStore[i]; }
 					if (i > lastIndex-kickContributors) { outKick += localPointStore[i] - endPos; }
@@ -363,7 +362,7 @@ FVector AABCurvedDecorHologram::FindSnappedHitLocation(const FHitResult& hitResu
 }
 
 void AABCurvedDecorHologram::UpdateAndRecalcSpline() {
-	UE_LOG(LogTemp, Warning, TEXT("[[[ %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("[[[ %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
 
 	// actually set data
 	if (splineRefHolo != NULL) {
