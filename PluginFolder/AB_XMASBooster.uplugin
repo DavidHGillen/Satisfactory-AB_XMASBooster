@@ -1,13 +1,13 @@
 {
 	"FileVersion": 3,
 	"Version": 2,
-	"VersionName": "2.1.0",
-	"SemVersion": "2.1.0",
+	"VersionName": "2.1.1",
+	"SemVersion": "2.1.1",
 	"FriendlyName": "Beaver's Ficsmas Booster",
 	"Description": "Angry Beaver thinks you need more Ficsmas Spirit, so here it is!",
 	"Category": "Modding",
-	"CreatedBy": "angrybeaver",
-	"CreatedByURL": "",
+	"CreatedBy": "AngryBeaver",
+	"CreatedByURL": "https://github.com/DavidHGillen/Satisfactory-AB_XMASBooster",
 	"DocsURL": "",
 	"MarketplaceURL": "",
 	"SupportURL": "",
@@ -15,6 +15,7 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
+	"GameVersion": ">=365306",
 	"Modules" : [
 		{
 			"Name" : "AB_XMASBooster",
@@ -25,9 +26,8 @@
 	"Plugins": [
 		{
 			"Name": "SML",
-			"SemVersion": "^3.7.0",
-			"bIsOptional": false,
-			"Enabled": true
+			"Enabled": true,
+			"SemVersion": "^3.8.0"
 		}
 	]
 }
