@@ -9,6 +9,11 @@ AABCurvedDecorBuildable::AABCurvedDecorBuildable() {
 	bReplicates = true;
 }
 
+void AABCurvedDecorBuildable::OnConstruction(const FTransform& Transform) {
+	Super::OnConstruction(Transform);
+	//UpdateSplineMesh(); // crashing?!
+}
+
 void AABCurvedDecorBuildable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
@@ -23,6 +28,8 @@ void AABCurvedDecorBuildable::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 void AABCurvedDecorBuildable::UpdateSplineMesh() {
 	// were there to be multiple spline mesh components this might be unwise
 	USplineMeshComponent* splineMesh = GetComponentByClass<USplineMeshComponent>();
+	if (splineMesh == NULL) { return; }
+
 	splineMesh->SetStartPosition(StartPosition, false);
 	splineMesh->SetEndPosition(EndPosition, false);
 	splineMesh->SetStartTangent(StartTangent, false);
@@ -31,5 +38,4 @@ void AABCurvedDecorBuildable::UpdateSplineMesh() {
 	splineMesh->SetEndRoll(0.001f, false);
 	splineMesh->UpdateMesh_Concurrent();
 	splineMesh->UpdateBounds();
-
 }

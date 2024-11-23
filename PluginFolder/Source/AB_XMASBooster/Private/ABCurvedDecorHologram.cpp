@@ -23,25 +23,7 @@ AABCurvedDecorHologram::AABCurvedDecorHologram() {
 void AABCurvedDecorHologram::BeginPlay() {
 	Super::BeginPlay();
 
-	TArray<AActor*> subActors;
-	AABCurvedDecorBuildable* curvedDecor;
-
-	GetAllChildActors(subActors);
-
-	for (int i = 0; i < subActors.Num(); i++) {
-		AActor* testActor = subActors[i];
-		curvedDecor = Cast<AABCurvedDecorBuildable>(testActor);
-		if (curvedDecor != NULL) {
-			length = curvedDecor->SplineLength;
-			endPos = curvedDecor->EndPosition;
-			startTangent = curvedDecor->StartTangent;
-			endTangent = curvedDecor->EndTangent;
-
-			break;
-		}
-	}
-
-	//UE_LOG(LogTemp, Warning, TEXT("[[[ [[READIT]] %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("[[[ [[READIT]] %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
 }
 
 void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
@@ -179,17 +161,17 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 				FVector outKick = FVector::Zero();
 				int kickContributors = FMath::Max<int>((lastIndex + 1.0f) * 0.15f, 1);
 
-				//UE_LOG(LogTemp, Warning, TEXT("[[[   in kick: %s"), *inKick.ToString());
-				//UE_LOG(LogTemp, Warning, TEXT("[[[   outKick: %s"), *outKick.ToString());
+				UE_LOG(LogTemp, Warning, TEXT("[[[   in kick: %s"), *inKick.ToString());
+				UE_LOG(LogTemp, Warning, TEXT("[[[   outKick: %s"), *outKick.ToString());
 
 				// accumulate weighted attributes in respective tangents
 				for (int i = 1; i <= lastIndex; i++) {
 					float ratio = (float)i / ((float)lastIndex + 1.0f);
-					//UE_LOG(LogTemp, Warning, TEXT("[[[   ratio: %f"), ratio);
+					UE_LOG(LogTemp, Warning, TEXT("[[[   ratio: %f"), ratio);
 					startTangent += ((1.0f - ratio) * 8.0f) * localPointStore[i];
-					//UE_LOG(LogTemp, Warning, TEXT("[[[[[[   stTangent: %s"), *startTangent.ToString());
+					UE_LOG(LogTemp, Warning, TEXT("[[[[[[   stTangent: %s"), *startTangent.ToString());
 					endTangent += (ratio * 8.0f) * (localPointStore[i] - endPos);
-					//UE_LOG(LogTemp, Warning, TEXT("[[[[[[   enTangent: %s"), *endTangent.ToString());
+					UE_LOG(LogTemp, Warning, TEXT("[[[[[[   enTangent: %s"), *endTangent.ToString());
 
 					if (i <= kickContributors) {            inKick += localPointStore[i]; }
 					if (i > lastIndex-kickContributors) { outKick += localPointStore[i] - endPos; }
@@ -238,7 +220,7 @@ void AABCurvedDecorHologram::SetHologramLocationAndRotation(const FHitResult& hi
 
 			endPos = snappedHitLocation;
 			startTangent = snappedHitLocation + FVector(0.001f); // If these are "exact" floating points can decide things are twisty
-			endTangent = snappedHitLocation - FVector(0.001f); // If these are "exact" floating points can decide things are twisty
+			endTangent =   snappedHitLocation - FVector(0.001f); // If these are "exact" floating points can decide things are twisty
 
 			bShowMarker = false;
 		} else {
@@ -306,8 +288,9 @@ USceneComponent* AABCurvedDecorHologram::SetupComponent(USceneComponent* attachP
 
 		UpdateAndRecalcSpline();
 
-		UFGBlueprintFunctionLibrary::ShowOutline(splineRefHolo, EOutlineColor::OC_HOLOGRAM);
-		UFGBlueprintFunctionLibrary::ApplyCustomizationPrimitiveData(this, mCustomizationData, this->mCustomizationData.ColorSlot, splineRefHolo);
+		// crashing?!
+		//UFGBlueprintFunctionLibrary::ShowOutline(splineRefHolo, EOutlineColor::OC_HOLOGRAM);
+		//UFGBlueprintFunctionLibrary::ApplyCustomizationPrimitiveData(this, mCustomizationData, this->mCustomizationData.ColorSlot, splineRefHolo);
 
 		return splineRefHolo;
 	}
@@ -356,13 +339,13 @@ FVector AABCurvedDecorHologram::FindSnappedHitLocation(const FHitResult& hitResu
 		snappedHitLocation = ActorToWorld().InverseTransformPosition(snappedHitLocation);
 	}
 
-	//UE_LOG(LogTemp, Warning, TEXT("[[[ snap: %s ]]]"), *snappedHitLocation.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("[[[ snap: %s ]]]"), *snappedHitLocation.ToString());
 
 	return snappedHitLocation;
 }
 
 void AABCurvedDecorHologram::UpdateAndRecalcSpline() {
-	//UE_LOG(LogTemp, Warning, TEXT("[[[ %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("[[[ %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
 
 	// actually set data
 	if (splineRefHolo != NULL) {
