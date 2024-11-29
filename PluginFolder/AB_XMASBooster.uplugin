@@ -15,12 +15,12 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
-	"GameVersion": ">=365306",
-	"Modules" : [
+	"GameVersion": ">=382498",
+	"Modules": [
 		{
-			"Name" : "AB_XMASBooster",
-			"Type" : "Runtime",
-			"LoadingPhase" : "Default"
+			"Name": "AB_XMASBooster",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [
