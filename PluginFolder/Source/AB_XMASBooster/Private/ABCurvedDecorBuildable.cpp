@@ -9,14 +9,16 @@ AABCurvedDecorBuildable::AABCurvedDecorBuildable() {
 	bReplicates = true;
 }
 
-void AABCurvedDecorBuildable::OnConstruction(const FTransform& Transform) {
-	Super::OnConstruction(Transform);
-	//UpdateSplineMesh(); // crashing?!
+void AABCurvedDecorBuildable::BeginPlay() {
+	//UE_LOG(LogTemp, Warning, TEXT("[{[BeginPlay]]]"));
+	Super::BeginPlay();
+	UpdateSplineMesh();
 }
 
 void AABCurvedDecorBuildable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME(AABCurvedDecorBuildable, CostMultiplier);
 	DOREPLIFETIME(AABCurvedDecorBuildable, SplineLength);
 
 	DOREPLIFETIME(AABCurvedDecorBuildable, StartPosition);
@@ -25,10 +27,26 @@ void AABCurvedDecorBuildable::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	DOREPLIFETIME(AABCurvedDecorBuildable, EndTangent);
 }
 
+void AABCurvedDecorBuildable::PostSerializedFromBlueprint(bool isBlueprintWorld) {
+	//UE_LOG(LogTemp, Warning, TEXT("[{[PostSerz]]]"));
+	Super::PostSerializedFromBlueprint(isBlueprintWorld);
+
+	GetWorld()->GetTimerManager().SetTimer(Timir, this, &AABCurvedDecorBuildable::UpdateSplineMesh, 0.1f, true);
+}
+
+int32 AABCurvedDecorBuildable::GetDismantleRefundReturnsMultiplier() const {
+	return CostMultiplier;
+}
+
 void AABCurvedDecorBuildable::UpdateSplineMesh() {
 	// were there to be multiple spline mesh components this might be unwise
 	USplineMeshComponent* splineMesh = GetComponentByClass<USplineMeshComponent>();
-	if (splineMesh == NULL) { return; }
+	if (splineMesh == NULL) {
+		//UE_LOG(LogTemp, Warning, TEXT("[{[NOMAS]]]"));
+		return;
+	}
+
+	//UE_LOG(LogTemp, Warning, TEXT("[{[ [[UPDATE IT]] %s | %s ||| %s | %s ]]]"), *StartPosition.ToString(), *EndPosition.ToString(), *StartTangent.ToString(), *EndTangent.ToString());
 
 	splineMesh->SetStartPosition(StartPosition, false);
 	splineMesh->SetEndPosition(EndPosition, false);

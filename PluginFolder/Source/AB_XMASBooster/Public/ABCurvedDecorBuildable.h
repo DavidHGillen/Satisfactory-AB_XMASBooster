@@ -18,8 +18,16 @@ class AB_XMASBOOSTER_API AABCurvedDecorBuildable : public AFGBuildable
 public:
 	AABCurvedDecorBuildable();
 
-	virtual void OnConstruction(const FTransform& Transform) override;
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual void PostSerializedFromBlueprint(bool isBlueprintWorld = false) override;
+	virtual int32 GetDismantleRefundReturnsMultiplier() const override;
+
+	FTimerHandle Timir;
+
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Replicated, SaveGame, Category = "CurvedDecor")
+	int32 CostMultiplier;
 
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Replicated, SaveGame, Category = "CurvedDecor")
 	float SplineLength;
