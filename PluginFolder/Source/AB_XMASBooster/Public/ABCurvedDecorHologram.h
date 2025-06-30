@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "FGGenericBuildableHologram.h"
+#include "FGBlueprintHologram.h"
 #include "Components/SplineMeshComponent.h"
 
 #include "ABCurvedDecorHologram.generated.h"
@@ -40,7 +41,7 @@ public:
 
 	// AActor:
 	virtual void BeginPlay() override;
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+	//virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 
 	// FactoryGame:
 	virtual void GetSupportedBuildModes_Implementation(TArray<TSubclassOf<UFGBuildGunModeDescriptor>>& out_buildmodes) const override;
@@ -99,6 +100,8 @@ protected:
 	void ResetLineData();
 
 	// Static:
+public:
+	static void BlueprintDataVisualize(AFGBlueprintHologram* blueprintHologram, AFGBuildable* buildable, USceneComponent* buildableRootComponent);
 	static float calculateMeshLength(FVector start, FVector end, FVector startTangent, FVector endTangent);
 	static FVector nearestSplinePoint(USplineMeshComponent* spline, const FVector& test, int steps = 12, float resolution = 0.3f);
 };
