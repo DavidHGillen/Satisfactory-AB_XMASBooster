@@ -26,12 +26,12 @@ void AABCurvedDecorHologram::BeginPlay() {
 	//UE_LOG(LogTemp, Warning, TEXT("[[[ [[READIT]] %s | %s | %s ]]]"), *startTangent.ToString(), *endTangent.ToString(), *endPos.ToString());
 }
 
-/*void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
+void AABCurvedDecorHologram::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AABCurvedDecorHologram, endPos);
 	DOREPLIFETIME(AABCurvedDecorHologram, startTangent);
 	DOREPLIFETIME(AABCurvedDecorHologram, endTangent);
-}*/
+}
 
 
 // FactoryGame:

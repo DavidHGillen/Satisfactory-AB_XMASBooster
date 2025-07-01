@@ -1,8 +1,8 @@
 {
 	"FileVersion": 3,
 	"Version": 3,
-	"VersionName": "3.0.1",
-	"SemVersion": "3.0.1",
+	"VersionName": "3.0.2",
+	"SemVersion": "3.0.2",
 	"FriendlyName": "Beaver's Ficsmas Booster",
 	"Description": "Angry Beaver thinks you need more Ficsmas Spirit, so here it is!",
 	"Category": "Modding",
@@ -15,7 +15,7 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
-	"GameVersion": ">=382498",
+	"GameVersion": ">=416835",
 	"Modules": [
 		{
 			"Name": "AB_XMASBooster",
@@ -27,7 +27,7 @@
 		{
 			"Name": "SML",
 			"Enabled": true,
-			"SemVersion": "^3.8.0"
+			"SemVersion": "^3.11.1"
 		}
 	]
 }
